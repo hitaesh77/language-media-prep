@@ -1,14 +1,43 @@
-﻿# Language Media Prep
+# Lingo
 
-A local Arabic vocabulary preview application with a **FastAPI backend** and **Next.js / TypeScript frontend**.
+An Arabic-first vocabulary preparation prototype built with Next.js App Router, TypeScript, Tailwind CSS and Lucide icons. The V1 frontend follows the supplied Sahih mockup: saved sets, text/PDF input, paragraph selection, learner settings, vocabulary management, flashcards and completion.
 
-Paste Arabic text, select paragraphs, set proficiency and target variety, generate up to 15 source-linked items, mark familiar words, and review the rest as flashcards. Arabic text uses RTL layout. The frequency baseline runs without credentials; it does not generate meanings. Optional contextual AI provides meanings and learner-specific prioritization using a configured chat-completions-compatible endpoint.
+## Run the frontend
 
-## Run locally
+Requires Node.js 20.9+.
 
-Prerequisites: Python 3.12+ and Node.js 20.9+.
+```powershell
+cd frontend
+npm.cmd install
+npm.cmd run dev
+```
 
-Backend, from the repository root (PowerShell):
+Open http://localhost:3000. The frontend runs independently of FastAPI. Three illustrative saved sets are initialized on first use; their source text and vocabulary are the same small demo fixture. Saved sets and familiar selections persist in this browser's localStorage. No account, database or credentials are required.
+
+## Frontend organization
+
+- `frontend/components/prep-app.tsx` coordinates navigation, shared state, and API calls.
+- `frontend/components/screens/` contains a component for each step of the learning flow. Screens receive typed data and action callbacks; they do not navigate to one another or call the API directly.
+- `frontend/components/app-shell.tsx` owns the header, footer, and step indicator.
+- `frontend/components/flow-controls.tsx` contains shared form and heading controls.
+- `frontend/components/brand-logo.tsx` displays the supplied transparent Lingo logo in the header and footer. The logo lives in `frontend/public/branding/`; `frontend/app/favicon.ico` supplies the browser icon, with the PNG alternative configured in the root layout metadata.
+
+## Mock API and future integration
+
+`frontend/lib/api/types.ts` defines `PrepClient`, request and response types. UI calls the adapter exported by `frontend/lib/api/client.ts`; replace that export with an HTTP implementation when integrating endpoints. `mock-client.ts` implements asynchronous set loading, source processing, generation/regeneration, familiar updates and set retrieval. Persistence is confined to that module. No fake HTTP endpoints were added.
+
+- PDF selection validates extension, MIME type and a nonempty size up to 5 MB. **Extraction is mocked**: file contents are neither read nor uploaded; the UI explicitly previews a fixed sample. PDF binaries are never persisted.
+- Generation waits briefly and uses a small multilingual illustrative glossary. Expressions are linked to original selected paragraphs; arbitrary text outside the glossary gets explicit unavailable meanings. It is not AI, a translation service or a proficiency-sensitive ranking system. Level and variety are stored but do not alter mock output. Meanings are unreviewed.
+- Paragraph IDs use SHA-256 of the original source plus paragraph index. Characters are preserved; source edits change IDs. Vocabulary IDs include their source reference. Unknown selected IDs are rejected.
+- Inputs are limited to 20,000 characters. Browser storage may fail or become corrupted; errors are shown, with an explicit reset option for unreadable saved data. Source text is rendered as text, never HTML.
+- Screens use an in-page state flow; creation drafts and practice-session progress are not persisted. Refresh returns home; completed sets and familiar selections remain. Regeneration replaces vocabulary and clears familiar selections.
+- Flashcards exclude familiar items. Click or Space reveals; arrow keys navigate and Escape exits. Completion counts cards visited, not recall accuracy. No audio, subtitles or V2 controls are included.
+
+The existing FastAPI backend remains available separately. Its `/api/segments` and `/api/generate` contracts differ from `PrepClient`; the future HTTP adapter should map those contracts and add real PDF extraction and saved-set operations. Keep all provider credentials on the backend. Grounding verifies occurrence, not meaning.
+
+## Existing backend
+
+Python 3.12+:
 
 ```powershell
 python -m venv .venv
@@ -18,36 +47,23 @@ cd backend
 ..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Frontend, in another terminal from the repository root:
-
-```powershell
-cd frontend
-npm.cmd install
-npm.cmd run dev
-```
-
-Open http://localhost:3000. The API and interactive documentation are at http://localhost:8000/docs. Use **Try a sample**, choose passages, then prepare vocabulary. No database or account is required. All browser state is in memory and clears on refresh.
-
-## Configuration
-
-Backend reads `backend/.env` when started from `backend/`. Optional `LLM_API_URL` (full trusted endpoint URL), `LLM_API_KEY`, and `LLM_MODEL` enable contextual AI. The provider must accept `messages` and `response_format: {type: json_object}` and return `choices[0].message.content` containing JSON. Only selected passages and learner settings are transmitted. Keys stay on the backend. Never put credentials in a `NEXT_PUBLIC_` variable.
-
-`FRONTEND_ORIGINS` defaults to `http://localhost:3000` (comma-separated exact origins). The frontend defaults to `http://localhost:8000`; copy `frontend/.env.local.example` to `frontend/.env.local` to change `NEXT_PUBLIC_API_URL`. Restart processes after changing environment files.
+The backend provides deterministic parsing, a frequency baseline without meanings, and optional contextual generation via a server-configured chat-completions-compatible endpoint. See `backend/.env.example` and [architecture](docs/architecture.md). Do not put secrets in `NEXT_PUBLIC_` variables. This frontend does not currently call that backend.
 
 ## Verify
 
 ```powershell
 cd backend
-..\.venv\Scripts\python.exe -m pytest -q
+python -m pytest -q
 cd ../frontend
+npm.cmd test
 npm.cmd run typecheck
 npm.cmd run build
 ```
 
-Tests cover deterministic parsing, original text preservation, paragraph selection, request validation, source grounding, and mocked AI responses. Live provider behavior and Arabic meanings require separate review. Generation responses report elapsed milliseconds and available provider token usage; monetary cost is unknown until a provider and pricing are chosen.
+For consistent frontend formatting, run `npm.cmd run format` from `frontend/`.
+Use `npm.cmd run format:check` to check formatting without changing files.
+The shared rules are in `frontend/.prettierrc.json`. Python files follow Black formatting.
 
-## Scope and decisions
+Frontend contract tests cover source preservation, stable IDs, selected-source grounding, familiar persistence/filtering, regeneration, invalid input and corrupt storage. Backend tests cover API validation and mocked model output. No lint configuration is present. Live AI meanings, PDF extraction, stakeholder review and effectiveness evaluation remain outside this frontend demo.
 
-See [architecture and remaining decisions](docs/architecture.md). The pasted brief is the input proposal; `docs/milestone-1-brief.md` and `docs/proposed-scope.md` were absent in this empty repository. No stakeholder evidence or evaluation results have been invented. Defaults are intermediate proficiency, Modern Standard Arabic, and English explanations, all provisional and editable.
-
-SRT/VTT upload, short text PDF extraction, and subtitle-provider lookup are follow-up work. Video upload, transcription, OCR, full books, Netflix, and YouTube are excluded from this slice. This is a local development application; public deployment needs a separate access-control and request-budget decision.
+Proficiency, variety and explanation defaults are provisional. No stakeholder or evaluation outcomes are claimed. Browser storage has no encryption or cross-device sync. Only use bounded, non-sensitive demonstration passages.

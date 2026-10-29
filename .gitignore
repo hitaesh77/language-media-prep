@@ -1,15 +1,54 @@
+# Python environments, caches, and build output
 .venv/
+venv/
+env/
 __pycache__/
 .pytest_cache/
-*.pyc
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# JavaScript dependencies and generated Next.js output
 node_modules/
 .next/
+out/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+
+# Local credentials (safe setup examples remain versioned)
 .env
 .env.*
 !.env.example
 !.env.local.example
-*.tsbuildinfo
+*.pem
+*.key
+.aws/
+
+# Test reports, coverage, and runtime logs
 playwright-report/
 test-results/
+coverage/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.log
 
-next-env.d.ts
+# Local user content and private coursework evidence; do not put these in public/
+uploads/
+coursework-evidence/
+private-evidence/
+
+# Machine-local editor settings and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
