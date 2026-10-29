@@ -90,7 +90,7 @@ export function ContentScreen({
           <div className="upload">
             <Upload size={30} />
             <h3>Choose a short Arabic PDF</h3>
-            <p>Text-based PDF · up to 5 MB</p>
+            <p>Text-based PDF · up to 4 MiB</p>
             <input
               type="file"
               accept=".pdf,application/pdf"

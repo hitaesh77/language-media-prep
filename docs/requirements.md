@@ -12,7 +12,7 @@ This document records the agreed release scope supplied in the product brief. Re
 
 ## Requirements
 
-Each row retains its release assignment from the supplied brief. V2* denotes conditional scope.
+Original brief requirements retain their release assignments. Persistent cloud sets and PDF originals were added to V2 by the user on October 29, 2026. V2* denotes conditional scope.
 
 V2: End-of-semester release adding movie/subtitle preparation, improving AI accuracy, and completing stakeholder validation.
 
@@ -139,7 +139,26 @@ V2: End-of-semester release adding movie/subtitle preparation, improving AI accu
 | Manage subtitle timestamps and movie segment references | V2 |
 | Optimize performance and reliability | V2 |
 
-A database, authentication system, and permanent vocabulary storage are not required for either release unless testing identifies a clear need.
+A database, authentication system, and permanent PDF storage remain unnecessary for V1. V1 may save extracted text, vocabulary and familiar flags in browser storage, clearly labeled as saved in this browser.
+
+#### V2 persistent storage (added October 29, 2026)
+
+| Requirement | Release |
+| --- | --- |
+| Persist saved sets in a durable cloud database, including names, source text, stable segments, selected passages, preferences, vocabulary and familiar flags | V2 |
+| Retain PDF originals in private object storage and associate them with saved sets | V2 |
+| List and reopen saved sets after backend restarts or redeployments without re-extraction or regeneration | V2 |
+| Provide authorized open/download access to saved PDF originals | V2 |
+| Preserve original text, stable segment IDs and PDF page references through storage and retrieval | V2 |
+| Allow deletion of sets and associated PDF originals under a documented retention policy | V2 |
+| Handle database/storage failures and quotas honestly; recover from partial saves and clean up orphaned uploads | V2 |
+| Define and enforce library ownership and access before exposing cloud persistence to multiple users | V2 |
+
+Postgres (candidate: Neon) and private object storage (candidate: Vercel Blob) are proposed, not provisioned or final provider decisions. Function-local JSON, SQLite and memory do not satisfy durable shared storage. Keep storage credentials on the backend.
+
+Accounts are not automatically added by this scope change. Library identification, recovery and isolation remain design decisions; cross-device access is not promised until these are defined. Document browser-data migration or export behavior before switching storage. Flashcard position remains session-only. An embedded PDF viewer is optional; open/download is sufficient.
+
+**Approved PDF limit:** 4 MiB (`4 * 1024 * 1024` bytes), with bounded multipart overhead for Vercel. Backend and mock frontend validation now enforce this limit; the frontend HTTP adapter is still pending. Permanent PDF retention is V2, while real PDF extraction remains V1.
 
 ### 8. Testing and Validation
 
@@ -162,6 +181,7 @@ A database, authentication system, and permanent vocabulary storage are not requ
 | Measure preparation and consumption time | V2 |
 | Evaluate comprehension and perceived usefulness | V2 |
 | Resolve major usability and reliability problems | V2 |
+| Test cloud save/reopen/update/delete across restarts, source/page-reference preservation, access isolation, partial failures and orphan cleanup | V2 |
 
 ### 9. Documentation and Deployment
 
@@ -178,6 +198,7 @@ A database, authentication system, and permanent vocabulary storage are not requ
 | Document external subtitle API requirements | V2 |
 | Document testing procedures and results | V2 |
 | Finalize product documentation and known limitations | V2 |
+| Document storage configuration, library access/recovery, retention/deletion, quotas and browser-data migration/export | V2 |
 
 ### 10. Explicitly excluded features
 
@@ -188,8 +209,8 @@ These are not required for either V1 or V2.
 - Full-book processing
 - Scanned-PDF OCR
 - Multi-language support beyond Arabic
-- User accounts and authentication
-- Persistent vocabulary libraries
+- User accounts and authentication as a standalone product feature (V2 library ownership/access must still be designed)
+- Embedded PDF reader with annotations or vocabulary-linked navigation (optional enhancement)
 - Spaced repetition
 - Gamification, streaks, and achievements
 - Full language-learning curriculum
@@ -211,4 +232,6 @@ A learner can prepare vocabulary from pasted text, PDF documents, or uploaded mo
 
 The system has improved vocabulary accuracy, meaningful automated test coverage, stakeholder feedback, and documented experimental evaluation.
 
-Recommended scope boundary: V1 should deliver nearly the entire learning experience, including PDF support. V2 should primarily extend the types of media learners can prepare for and provide evidence that the application helps them learn more efficiently.
+Saved sets, source/page references, preferences, vocabulary and familiar flags survive backend restarts/redeployments in durable cloud storage. Learners can reopen their sets, access authorized PDF originals, and delete sets and associated files. Library ownership and recovery limitations are documented and tested.
+
+Recommended scope boundary: V1 delivers the learning experience including PDF extraction without cloud storage prerequisites. V2 extends media types, adds durable saved sets/PDF originals, and provides evidence that the application helps learners prepare more efficiently.

@@ -6,16 +6,30 @@ The user requested FastAPI and Next.js. The supplied brief calls for Arabic-firs
 
 ## Implemented local slice
 
-- `backend/app/main.py`: Pydantic request validation, deterministic paragraph segmentation, selection validation, frequency baseline, optional server-side LLM adapter, output grounding, latency and token usage metadata.
+- `backend/app/main.py`: HTTP/CORS and bounded request handling. `domain.py`: source parsing, Pydantic models, baseline and grounding. `generation.py`: server-side LLM calls, safe failures and timing/usage logs. `pdf_service.py` and `pdf_worker.py`: isolated bounded extraction and canonical page provenance.
 - `frontend/app/`: Next.js App Router UI using TypeScript, explicit RTL Arabic passages, learner settings, source references, familiar-word filtering, and flippable flashcards.
 - Browser calls FastAPI directly using a public backend URL and explicitly allowed development origin. There are no Next.js business API endpoints.
 - The API is stateless. The generation request resubmits the original text and chosen segment IDs; the server re-parses and rejects stale/unknown IDs. IDs combine a source SHA-256 prefix and paragraph index. They are stable for identical input, not intended to persist across source edits.
 - The first parser splits on blank lines and preserves paragraph characters. No linguistic sentence segmentation or Arabic normalization is claimed. Exact expressions must occur with Arabic word boundaries in a selected source. The backend attaches original context rather than trusting model-provided context.
 - Baseline uses surface-form frequency, a small stopword list, and deterministic ties. It intentionally provides no invented translations and does not apply proficiency or variety. It is a comparison tool, not equivalent to contextual AI.
 - LLM JSON must contain 1–15 cards. The instruction requests about 10–15 unless the passage is short. A single invalid reference/expression rejects the response. Meanings remain unverified even when occurrence checks pass.
-- Input is limited to 20,000 characters. No uploads, server-side user persistence, authentication, or database are needed for local use. Do not expose this unauthenticated generation API publicly without request budgets and access controls.
+- Input is limited to 20,000 Unicode code points. PDF uploads are processed temporarily with no retention. No server-side user persistence, authentication or database is needed for V1. Do not expose this unauthenticated generation API publicly without request budgets and access controls.
 
 ## Provisional defaults and open decisions
+
+### Approved storage scope update (2026-10-29)
+
+The user approved a 4 MiB PDF limit and added cloud-persisted sets and private PDF originals to V2. V1 retains browser-saved text/vocabulary/familiar flags and stateless FastAPI processing, with no DB/Blob prerequisite. Backend and mock frontend validation enforce 4 MiB.
+
+V2 requires reopening saved sets, authorized PDF open/download, deletion, source/page-reference preservation and library access design. Postgres/Neon and Vercel Blob are candidates, not configured integrations. Ownership, recovery, retention and browser-data migration remain open; an embedded viewer is optional. See [requirements](requirements.md). The user approved API implementation; the frontend HTTP adapter remains pending.
+
+### Backend API implementation (2026-10-29)
+
+`POST /api/pdf/extract` accepts one multipart PDF and returns canonical extracted text, matching segments and 1-based page references. Limits: 4 MiB/file, 32 KiB multipart overhead, 20 pages, 20,000 extracted code points, 2 MiB decoded content/page, two workers per process and 10 seconds per worker. Linux adds 512 MiB address-space/8 CPU-second limits; Windows verification does not establish those Linux limits or Vercel subprocess compatibility. Blank pages have empty references. pypdf layout output is preserved without automatic normalization/reversal; unusable mappings/presentation forms, encrypted files and all image/Form drawing operations are rejected conservatively. This excludes logos and some readable Arabic documents. A visually checked browser PDF is deliberately rejected for its misleading Unicode mapping. Broad successful Arabic PDF/font compatibility remains unverified.
+
+Generation accepts Spanish explanations, rejects duplicate selections/blank meanings, forwards only selected source/settings, and validates all cards before returning. It has a 60-second overall deadline, 4,000 completion-token ceiling, low reasoning effort for GPT-5/6 models, no retries and sanitized usage/logging. Model/endpoint remain server-configured; `cost` is null. The user selected OpenAI and was recommended `gpt-6-luna`; `.env` and live provider output were not inspected/tested. Tests disable dotenv loading and block live HTTP model requests.
+
+`backend/vercel.json` sets 90 seconds on `app/main.py` for a project rooted at `backend/`. This is configuration preparation, not a verified deployment. Frontend integration and live meaning quality remain separate outstanding work.
 
 Intermediate, Modern Standard Arabic, and English explanations are implementation defaults, not stakeholder-approved preferences. Provider, model, storage, authentication, hosting, representative content, preparation-time target, and proficient Arabic reviewer are unresolved. Provider costs are not guessed. The response includes usage when supplied and leaves monetary cost null.
 

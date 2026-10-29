@@ -179,8 +179,8 @@ export const mockClient: PrepClient = {
         (file.type && file.type !== "application/pdf")
       )
         throw Error("Choose a PDF file.");
-      if (file.size === 0 || file.size > 5 * 1024 * 1024)
-        throw Error("Choose a nonempty PDF under 5 MB.");
+      if (file.size === 0 || file.size > 4 * 1024 * 1024)
+        throw Error("Choose a nonempty PDF no larger than 4 MiB.");
       await delay(450);
       text = SAMPLE;
     }

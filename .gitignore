@@ -29,6 +29,7 @@ next-env.d.ts
 .aws/
 
 # Test reports, coverage, and runtime logs
+/tmp/
 playwright-report/
 test-results/
 coverage/

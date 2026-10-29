@@ -37,7 +37,7 @@ test("source preservation, stable IDs, grounding, persistence, validation and re
         type: "application/pdf",
         size: 6000000,
       }),
-    /5 MB/,
+    /4 MiB/,
   );
   const request = {
     name: "Test source",
