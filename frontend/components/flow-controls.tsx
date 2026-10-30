@@ -47,9 +47,11 @@ export function Choice({
 export function SourceNameInput({
   name,
   onChange,
+  disabled,
 }: {
   name: string;
   onChange: (name: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <>
@@ -58,6 +60,7 @@ export function SourceNameInput({
       </label>
       <input
         id="set-name"
+        disabled={disabled}
         maxLength={100}
         placeholder="e.g. A morning in the old city"
         value={name}

@@ -4,6 +4,8 @@ Prepared October 29, 2026. Update: the user approved backend implementation. The
 
 ## What exists and what we will implement
 
+Integration update (2026-10-29): the real frontend HTTP adapter and browser-storage layer are connected. Adapter tests and real-browser text/PDF-to-review checks exercise FastAPI with a fixture provider. Live model quality and hosted deployment remain unverified. See README/progress log for actual results and current setup.
+
 The frontend has a complete mock learning flow, local saved sets/familiar flags, and five `PrepClient` methods. PDF extraction and glossary generation are illustrative mocks. FastAPI already provides health, canonical text segmentation, baseline generation, optional server-side contextual generation, and occurrence validation. The HTTP adapter still needs implementation. Preserve the accepted design.
 
 Review `backend/tests/test_v1_contract.py` alongside the existing `backend/tests/test_api.py`. New tests exercise the actual FastAPI routes with external LLM HTTP calls stubbed; they do not call a paid provider.

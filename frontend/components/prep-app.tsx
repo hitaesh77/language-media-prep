@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type SavedSet, type Segment, type Preferences } from "../lib/api/client";
-import { resetDemo } from "../lib/api/mock-client";
+import { resetUnreadableLocalData, StorageError } from "../lib/api/storage";
+import type { PageReference } from "../lib/api/types";
 import type { Screen } from "./prep-types";
 import { AppShell } from "./app-shell";
 import { HomeScreen } from "./screens/home-screen";
@@ -22,6 +23,7 @@ const defaults: Preferences = {
 };
 
 export default function PrepApp() {
+  const operation = useRef(0);
   // Navigation and saved-set state.
   const [screen, setScreen] = useState<Screen>("home");
   const [sets, setSets] = useState<SavedSet[]>([]);
@@ -33,6 +35,7 @@ export default function PrepApp() {
   const [mode, setMode] = useState<"Pasted text" | "PDF">("Pasted text");
   const [file, setFile] = useState<File>();
   const [segments, setSegments] = useState<Segment[]>([]);
+  const [pages, setPages] = useState<PageReference[]>();
   const [selected, setSelected] = useState<string[]>([]);
   const [prefs, setPrefs] = useState(defaults);
 
@@ -57,7 +60,7 @@ export default function PrepApp() {
       .then(setSets)
       .catch((e) => {
         showError(e);
-        setStorageError(true);
+        setStorageError(e instanceof StorageError && e.kind === "corrupt");
       });
   }, []);
 
@@ -68,11 +71,29 @@ export default function PrepApp() {
   }
 
   async function returnHome() {
+    const run = ++operation.current;
+    api.cancelPending();
+    setBusy(false);
+    navigateTo("home");
     try {
+      const saved = await api.listSets();
+      if (run === operation.current) setSets(saved);
+    } catch (e) {
+      if (run === operation.current) {
+        showError(e);
+        setStorageError(e instanceof StorageError && e.kind === "corrupt");
+      }
+    }
+  }
+
+  async function deleteSet(id: string) {
+    try {
+      await api.deleteSet(id);
       setSets(await api.listSets());
-      navigateTo("home");
+      if (active?.id === id) setActive(null);
     } catch (e) {
       showError(e);
+      throw e;
     }
   }
 
@@ -83,6 +104,7 @@ export default function PrepApp() {
     setMode("Pasted text");
     setFile(undefined);
     setSegments([]);
+    setPages(undefined);
     setSelected([]);
     setPrefs(defaults);
     navigateTo("content");
@@ -94,6 +116,8 @@ export default function PrepApp() {
     setText(set.text);
     setMode(set.type);
     setSegments(set.segments);
+    setPages(set.pages);
+    setFile(undefined);
     setSelected(set.selected);
     setPrefs(set.preferences);
     setFilter("All");
@@ -101,22 +125,28 @@ export default function PrepApp() {
   }
 
   async function processContent() {
+    const run = ++operation.current;
     setBusy(true);
     setError("");
     try {
       const result = await api.processContent(text, mode === "PDF" ? file : undefined);
+      if (run !== operation.current) return;
       setText(result.text);
       setSegments(result.segments);
+      setPages(result.pages);
       setSelected(result.segments.map((s) => s.id));
       navigateTo("passages");
     } catch (e) {
-      showError(e);
+      if (run === operation.current) showError(e);
     } finally {
-      setBusy(false);
+      if (run === operation.current) setBusy(false);
     }
   }
 
   async function generateVocabulary() {
+    if (busy) return;
+    const run = ++operation.current;
+    setBusy(true);
     navigateTo("loading");
     try {
       const set = await api.generateVocabulary({
@@ -127,25 +157,35 @@ export default function PrepApp() {
         segments,
         selected,
         preferences: prefs,
+        pages,
       });
+      if (run !== operation.current) return;
       setActive(set);
+      setSegments(set.segments);
+      setSelected(set.selected);
+      setPages(set.pages);
       setFilter("All");
       navigateTo("vocabulary");
     } catch (e) {
+      if (run !== operation.current) return;
       setScreen("customize");
       showError(e);
+    } finally {
+      if (run === operation.current) setBusy(false);
     }
   }
 
   async function updateFamiliarSelections(ids: string[]) {
     if (!active) return;
+    const run = ++operation.current;
     setBusy(true);
     try {
-      setActive(await api.updateFamiliar(active.id, ids));
+      const updated = await api.updateFamiliar(active.id, ids);
+      if (run === operation.current) setActive(updated);
     } catch (e) {
-      showError(e);
+      if (run === operation.current) showError(e);
     } finally {
-      setBusy(false);
+      if (run === operation.current) setBusy(false);
     }
   }
 
@@ -192,7 +232,7 @@ export default function PrepApp() {
 
   async function resetLocalData() {
     try {
-      resetDemo();
+      resetUnreadableLocalData();
       setSets(await api.listSets());
       setStorageError(false);
       setError("");
@@ -207,7 +247,7 @@ export default function PrepApp() {
         <div className="error" role="alert">
           {error}
           {storageError && (
-            <button onClick={resetLocalData}>Reset local demo data</button>
+            <button onClick={resetLocalData}>Delete unreadable local data</button>
           )}
         </div>
       )}
@@ -218,6 +258,7 @@ export default function PrepApp() {
           storageError={storageError}
           onCreateSet={startNewSet}
           onOpenSet={openSet}
+          onDeleteSet={deleteSet}
         />
       )}
 
@@ -243,6 +284,7 @@ export default function PrepApp() {
           name={name}
           mode={mode}
           segments={segments}
+          pages={pages}
           selected={selected}
           onNameChange={setName}
           onSelectionChange={setSelected}
@@ -255,6 +297,7 @@ export default function PrepApp() {
         <CustomizeScreen
           preferences={prefs}
           isRegenerating={!!active}
+          passageCount={selected.length}
           onChange={setPrefs}
           onBack={() => navigateTo(active ? "vocabulary" : "passages")}
           onGenerate={generateVocabulary}
@@ -279,6 +322,7 @@ export default function PrepApp() {
       {screen === "practice" && currentCard && (
         <PracticeScreen
           card={currentCard}
+          passageLabel={`Passage ${(active?.segments.findIndex((s) => s.id === currentCard.sourceId) ?? -1) + 1}${active?.pages?.find((p) => p.segmentIds.includes(currentCard.sourceId)) ? ` - Page ${active.pages.find((p) => p.segmentIds.includes(currentCard.sourceId))!.page}` : ""}`}
           index={index}
           total={queue.length}
           reviewedCount={reviewed.length}

@@ -1,11 +1,12 @@
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import type { SavedSet, Segment } from "../../lib/api/types";
+import type { PageReference, SavedSet, Segment } from "../../lib/api/types";
 import { Title, SourceNameInput } from "../flow-controls";
 
 type PassagesScreenProps = {
   name: string;
   mode: SavedSet["type"];
   segments: Segment[];
+  pages?: PageReference[];
   selected: string[];
   onNameChange: (name: string) => void;
   onSelectionChange: (ids: string[]) => void;
@@ -17,6 +18,7 @@ export function PassagesScreen({
   name,
   mode,
   segments,
+  pages,
   selected,
   onNameChange,
   onSelectionChange,
@@ -32,7 +34,7 @@ export function PassagesScreen({
       <SourceNameInput name={name} onChange={onNameChange} />
       <>
         <p className="muted">
-          {mode === "PDF" ? "Mock PDF sample · " : ""}
+          {mode === "PDF" ? "Extracted PDF text · " : ""}
           {selected.length} of {segments.length} passages selected
         </p>
         <div className="passages">
@@ -53,7 +55,12 @@ export function PassagesScreen({
                 }
               />
               <span>
-                <small>Passage {i + 1}</small>
+                <small>
+                  Passage {i + 1}
+                  {pages?.some((p) => p.segmentIds.includes(s.id))
+                    ? ` · Page ${pages.find((p) => p.segmentIds.includes(s.id))!.page}`
+                    : ""}
+                </small>
                 <span lang="ar" dir="rtl">
                   {s.text}
                 </span>

@@ -3,6 +3,7 @@ import type { Vocabulary } from "../../lib/api/types";
 
 type PracticeScreenProps = {
   card: Vocabulary;
+  passageLabel: string;
   index: number;
   total: number;
   reviewedCount: number;
@@ -15,6 +16,7 @@ type PracticeScreenProps = {
 
 export function PracticeScreen({
   card,
+  passageLabel,
   index,
   total,
   reviewedCount,
@@ -34,6 +36,7 @@ export function PracticeScreen({
           <i style={{ width: `${(reviewedCount / total) * 100}%` }} />
         </div>
       </div>
+      <p className="practice-source">{passageLabel}</p>
       <div className="flash-stage">
         <button
           className="round"

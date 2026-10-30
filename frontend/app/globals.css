@@ -163,6 +163,35 @@ header {
   font-weight: 500;
   color: var(--muted);
 }
+.home-button {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.set-entry {
+  min-width: 0;
+}
+.set-entry .set-card {
+  width: 100%;
+}
+.set-delete-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 2px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.set-delete-controls button {
+  padding: 5px 8px;
+  font-size: 11px;
+  border: 0;
+}
+.set-delete-controls .delete-confirm {
+  color: #a33443;
+}
 nav {
   display: flex;
   gap: 26px;
@@ -910,6 +939,14 @@ footer {
   }
 }
 @media (max-width: 560px) {
+  header {
+    flex-wrap: wrap;
+  }
+  header nav {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+  }
   .brand-logo {
     width: 104px;
   }
@@ -1033,4 +1070,97 @@ footer {
     animation: none !important;
     transition: none !important;
   }
+}
+
+.upload {
+  padding: 20px;
+}
+.upload-target {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 36px 20px;
+  border: 2px dashed #cfc4de;
+  border-radius: 12px;
+  background: white;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.upload-target:hover,
+.upload-target.dragging {
+  background: #f0e9fa;
+  border-color: var(--purple);
+}
+.upload-target:focus-visible {
+  outline: 3px solid var(--purple);
+  outline-offset: 4px;
+}
+.upload-target svg {
+  color: var(--purple);
+}
+.upload-target strong {
+  font-size: 18px;
+}
+.upload-target small {
+  color: var(--muted);
+}
+.upload-browse {
+  background: var(--purple);
+  color: white;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-weight: 600;
+}
+.upload-selection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  text-align: left;
+}
+.upload-selection .file-name {
+  flex: 1;
+  min-width: 0;
+}
+.card-count {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  font-weight: 600;
+}
+.card-count select {
+  padding: 12px;
+  border: 1px solid #cfc4de;
+  border-radius: 8px;
+  background: white;
+  max-width: 100%;
+}
+
+.passage-label {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 5px;
+}
+.practice-source {
+  text-align: center;
+  color: var(--muted);
+  margin: 18px 0;
+}
+
+.card-count input[type="number"] {
+  width: 100px;
+  padding: 12px;
+  border: 1px solid #cfc4de;
+  border-radius: 8px;
+  background: white;
+}
+.card-count input[aria-invalid="true"] {
+  border-color: #b42318;
 }

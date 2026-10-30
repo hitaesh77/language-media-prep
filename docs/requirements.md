@@ -85,6 +85,7 @@ V2: End-of-semester release adding movie/subtitle preparation, improving AI accu
 | Filter known items out of flashcard review | V1 |
 | Display the number of remaining unfamiliar words | V1 |
 | Allow users to move between vocabulary and review screens | V1 |
+| Delete individual browser-saved sets from Home with confirmation, preserving other sets | V1 |
 | Refine filtering and selection based on usability feedback | V2 |
 
 ### 5. Flashcard Review
@@ -111,6 +112,8 @@ V2: End-of-semester release adding movie/subtitle preparation, improving AI accu
 | Vocabulary results screen | V1 |
 | Flashcard review screen | V1 |
 | Clear navigation between application stages | V1 |
+| Visible Home navigation on every screen, including loading, without late-response navigation | V1 |
+| Start new libraries empty; show user-saved sets rather than preloaded sample libraries | V1 |
 | Responsive desktop and mobile layouts | V1 |
 | Consistent typography, spacing, and colors | V1 |
 | Correct bidirectional rendering for Arabic and English | V1 |
@@ -158,7 +161,7 @@ Postgres (candidate: Neon) and private object storage (candidate: Vercel Blob) a
 
 Accounts are not automatically added by this scope change. Library identification, recovery and isolation remain design decisions; cross-device access is not promised until these are defined. Document browser-data migration or export behavior before switching storage. Flashcard position remains session-only. An embedded PDF viewer is optional; open/download is sufficient.
 
-**Approved PDF limit:** 4 MiB (`4 * 1024 * 1024` bytes), with bounded multipart overhead for Vercel. Backend and mock frontend validation now enforce this limit; the frontend HTTP adapter is still pending. Permanent PDF retention is V2, while real PDF extraction remains V1.
+**Approved PDF limit:** 4 MiB (`4 * 1024 * 1024` bytes), with bounded multipart overhead for Vercel. Backend and frontend HTTP validation enforce this limit; the frontend now uploads actual PDF bytes. Permanent PDF retention is V2, while real PDF extraction remains V1.
 
 ### 8. Testing and Validation
 
@@ -222,7 +225,7 @@ YouTube integration remains an open question rather than a planned requirement.
 
 ### V1: Working Prototype
 
-A learner can paste Arabic text or upload a PDF, select a passage, set their proficiency and Arabic variety, generate 10-15 grounded vocabulary items, mark familiar expressions, and complete an interactive flashcard review.
+A learner can paste Arabic text or upload a PDF, select a passage, set their proficiency and Arabic variety, generate grounded vocabulary items (automatic 10-15 total, or a chosen target per passage), mark familiar expressions, and complete an interactive flashcard review.
 
 All major controls work, the interface is polished, and the entire application runs locally without an account or database.
 
@@ -235,3 +238,14 @@ The system has improved vocabulary accuracy, meaningful automated test coverage,
 Saved sets, source/page references, preferences, vocabulary and familiar flags survive backend restarts/redeployments in durable cloud storage. Learners can reopen their sets, access authorized PDF originals, and delete sets and associated files. Library ownership and recovery limitations are documented and tested.
 
 Recommended scope boundary: V1 delivers the learning experience including PDF extraction without cloud storage prerequisites. V2 extends media types, adds durable saved sets/PDF originals, and provides evidence that the application helps learners prepare more efficiently.
+
+
+## Requested usability refinements (2026-10-29)
+
+V1: clear PDF browse/drag/drop/replace/remove controls; English and Arabic explanation choices only; optional generation target per passage, at most 300 total, with honest returned counts. Short sources may yield fewer cards. This controls generation, not practice selection.
+
+
+**2026-10-30 clarification:** A numeric per-passage target applies independently across selected passages: 10 passages at 5 cards can yield 50 cards. Vocabulary/practice show source passage and PDF page labels. Combined sets support up to 300 cards, with 1-15 requested per passage; automatic mode retains 10-15 total. Shortfalls remain explicit.
+
+
+**Count selector refinement (2026-10-30):** Present a short list of presets plus a custom whole-number option, with total-card feedback and validation under the existing limits.

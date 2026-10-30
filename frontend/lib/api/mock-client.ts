@@ -39,7 +39,7 @@ export async function segmentText(text: string): Promise<Segment[]> {
 
 // Glossary examples are illustrative; unmatched text never receives invented meanings.
 function buildMockVocabulary(segments: Segment[], language: string) {
-  const languageIndex = language === "Arabic" ? 1 : language === "Spanish" ? 2 : 0;
+  const languageIndex = language === "Arabic" ? 1 : 0;
   const found = Object.entries(lexicon).flatMap(([expression, meanings]) => {
     const segment = segments.find((s) => s.text.includes(expression));
     return segment
@@ -163,6 +163,10 @@ export function resetDemo() {
 }
 
 export const mockClient: PrepClient = {
+  cancelPending() {},
+  async deleteSet(id) {
+    write((await read()).filter((s) => s.id !== id));
+  },
   listSets: read,
 
   async getSet(id) {

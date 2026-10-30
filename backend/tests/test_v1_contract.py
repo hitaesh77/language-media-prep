@@ -93,7 +93,7 @@ def test_text_limit_counts_unicode_code_points(text, status):
     assert client.post("/api/segments", json={"text": text}).status_code == status
 
 
-@pytest.mark.parametrize("language", ["English", "Arabic", "Spanish"])
+@pytest.mark.parametrize("language", ["English", "Arabic"])
 def test_generation_forwards_preferences_and_only_selected_source(provider, language):
     provider["content"] = json.dumps({"cards": [card(context="forged context")]})
     body = request_body(
@@ -299,3 +299,38 @@ def test_pdf_returns_actual_unicode_text_canonical_ids_and_page_reference(provid
 
 def test_pdf_rejects_readable_non_arabic_document():
     assert upload(synthetic_pdf("English only")).status_code == 422
+
+
+def test_spanish_is_not_supported(provider):
+    assert (
+        client.post(
+            "/api/generate", json=request_body(explanation_language="Spanish")
+        ).status_code
+        == 422
+    )
+    assert not provider["calls"]
+
+
+@pytest.mark.parametrize("count", [0, 16, 1.5, True])
+def test_card_count_validation(provider, count):
+    assert (
+        client.post(
+            "/api/generate", json=request_body(cards_per_passage=count)
+        ).status_code
+        == 422
+    )
+    assert not provider["calls"]
+
+
+def test_card_count_caps_each_passage_and_reports_shortfall(provider):
+    provider["content"] = json.dumps(
+        {"cards": [card(), card(expression=TEXT.split()[4])]}
+    )
+    response = client.post("/api/generate", json=request_body(cards_per_passage=1))
+    assert response.status_code == 200
+    assert len(response.json()["cards"]) == 1
+    settings = json.loads(provider["calls"][0]["messages"][1]["content"])["settings"]
+    assert settings["cards_per_passage"] == 1
+    response = client.post("/api/generate", json=request_body(cards_per_passage=3))
+    assert response.status_code == 200
+    assert "2 of 3" in response.json()["notice"]

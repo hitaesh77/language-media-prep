@@ -2,6 +2,8 @@
 
 Prepared: 2026-10-29. V1 deadline: Friday, October 30, 2026.
 
+Frontend integration update (2026-10-29): the real `PrepClient` HTTP adapter is now wired to FastAPI with validated browser storage. Text and PDF browser workflows were tested against real backend routes using a fixture LLM, without reading `.env` or paid calls. Source/page references and generation metadata persist; legacy demos remain labeled and reparse/remap before regeneration. README and architecture describe the current implementation; older proposals below are historical context. Next priorities are live provider/Arabic PDF verification and hosted smoke testing, not another adapter implementation.
+
 Implementation update (2026-10-29): the user approved the API tests and implementation. FastAPI now has bounded PDF extraction plus generation hardening; the frontend still uses its mock adapter. See README for current endpoint/limit/error contracts and `docs/progress-log.md` for verification. Both sides enforce the approved 4 MiB limit. PDF images/Form drawings and unusable font mappings are conservatively rejected; broader successful Arabic PDF compatibility remains unverified. The detailed proposals below are the original integration handoff and must be read alongside this update. V2 now includes durable cloud sets and private PDF originals.
 
 The user is happy with the current frontend design. Implement the services behind that experience; preserve the layout and flow. This is an implementation plan derived from the checked-in frontend and backend, not a claim that the proposed APIs already exist. Product scope remains in [requirements.md](requirements.md); current status and verification history are in [progress-log.md](progress-log.md).

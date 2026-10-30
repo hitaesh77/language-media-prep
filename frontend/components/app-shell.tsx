@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Screen } from "./prep-types";
 import { BrandLogo } from "./brand-logo";
+import { House } from "lucide-react";
 
 type AppShellProps = {
   screen: Screen;
@@ -41,6 +42,9 @@ export function AppShell({ screen, onHome, children }: AppShellProps) {
             ))}
           </nav>
         )}
+        <button className="home-button" onClick={onHome} aria-label="Go home">
+          <House size={16} /> Home
+        </button>
       </header>
       <main className={mainClassName}>{children}</main>
       <footer>

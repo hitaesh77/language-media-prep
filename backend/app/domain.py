@@ -38,7 +38,8 @@ class GenerateInput(SourceInput):
     variety: Literal[
         "Modern Standard Arabic", "Egyptian", "Levantine", "Gulf", "Unspecified"
     ] = "Modern Standard Arabic"
-    explanation_language: Literal["English", "Arabic", "Spanish"] = "English"
+    explanation_language: Literal["English", "Arabic"] = "English"
+    cards_per_passage: int | None = Field(default=None, strict=True, ge=1, le=15)
     mode: Literal["baseline", "llm"] = "baseline"
 
     @field_validator("segment_ids")
@@ -78,12 +79,18 @@ class PDFResult(SourceInput):
 
 
 class GenerationResult(BaseModel):
-    cards: list[Card] = Field(min_length=1, max_length=15)
+    cards: list[Card] = Field(min_length=1, max_length=300)
     mode: Literal["baseline", "llm"]
     elapsed_ms: int = Field(ge=0)
     usage: dict[str, int] | None
     cost: None = None
     notice: str
+
+
+class GroundingError(ValueError):
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__("Generated cards failed source validation.")
 
 
 def grounded(cards: list[Card], segments: list[Segment]) -> list[Card]:
@@ -99,15 +106,12 @@ def grounded(cards: list[Card], segments: list[Segment]) -> list[Card]:
             + re.escape(expression)
             + r"(?![\u0621-\u065f\u0670-\u06ff])"
         )
-        if (
-            not source
-            or not expression
-            or not re.search(pattern, source)
-            or expression in seen
-        ):
-            raise ValueError(
-                "Generated cards contain an invalid source reference or expression."
-            )
+        if not source:
+            raise GroundingError("unknown_reference")
+        if not expression or not re.search(pattern, source):
+            raise GroundingError("expression_not_found")
+        if expression in seen:
+            raise GroundingError("duplicate_expression")
         seen.add(expression)
         result.append(
             card.model_copy(update={"expression": expression, "context": source})
@@ -140,7 +144,6 @@ def baseline(segments: list[Segment], language: str) -> list[Card]:
     meaning = {
         "English": "Frequency baseline — meaning unavailable. Use contextual AI or look this up.",
         "Arabic": "اختيار حسب التكرار — المعنى غير متوفر.",
-        "Spanish": "Selección por frecuencia: significado no disponible. Consulta un diccionario.",
     }[language]
     cards = []
     for word, _ in ranked.most_common(15):

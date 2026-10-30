@@ -35,9 +35,15 @@ export function VocabularyScreen({
         subtitle={`${vocabularySet.vocabulary.length} words and phrases from “${vocabularySet.name}”. Mark what you know, then start practicing.`}
       />
       <p className="notice">
-        Demo vocabulary · glossary meanings are illustrative and unreviewed. Occurrence in
-        the source does not verify a meaning.
+        {vocabularySet.generation
+          ? vocabularySet.generation.notice
+          : "Legacy demo vocabulary: glossary meanings are illustrative and unreviewed. Regenerate to use contextual AI."}
       </p>
+      {vocabularySet.type === "PDF" && !vocabularySet.pages && (
+        <p className="notice">
+          This source is legacy demo PDF sample text, not an extracted original PDF.
+        </p>
+      )}
       <div className="vocab-toolbar">
         <div className="filters">
           {["All", "New", "Familiar"].map((f) => (
@@ -95,14 +101,29 @@ export function VocabularyScreen({
                   <strong lang="ar" dir="rtl">
                     {v.expression}
                   </strong>
-                  <span dir="auto">{v.meaning}</span>
+                  <span dir="auto">
+                    {v.meaning}
+                    <small className="passage-label">
+                      Passage{" "}
+                      {vocabularySet.segments.findIndex((s) => s.id === v.sourceId) + 1}
+                      {vocabularySet.pages?.find((p) => p.segmentIds.includes(v.sourceId))
+                        ? ` - Page ${vocabularySet.pages.find((p) => p.segmentIds.includes(v.sourceId))!.page}`
+                        : ""}
+                    </small>
+                  </span>
                   <ChevronDown size={16} />
                 </summary>
                 <div className="context">
                   <p lang="ar" dir="rtl">
                     {v.context}
                   </p>
-                  <small>Source passage: {v.sourceId}</small>
+                  <small>
+                    Source passage:{" "}
+                    {vocabularySet.segments.findIndex((s) => s.id === v.sourceId) + 1}
+                    {vocabularySet.pages?.find((p) => p.segmentIds.includes(v.sourceId))
+                      ? ` · Page ${vocabularySet.pages.find((p) => p.segmentIds.includes(v.sourceId))!.page}`
+                      : ""}
+                  </small>
                 </div>
               </details>
             </article>
@@ -116,7 +137,7 @@ export function VocabularyScreen({
         </div>
       )}
       <div className="actions">
-        <button onClick={onEditSettings}>
+        <button onClick={onEditSettings} disabled={busy}>
           <ArrowLeft size={16} />
           Edit settings
         </button>
@@ -129,7 +150,7 @@ export function VocabularyScreen({
           <ArrowRight size={17} />
         </button>
       </div>
-      <button className="text-button back-home" onClick={onHome}>
+      <button className="text-button back-home" onClick={onHome} disabled={busy}>
         Return home
       </button>
     </>

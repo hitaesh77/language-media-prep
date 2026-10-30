@@ -1,3 +1,4 @@
-﻿// Replace this export with an HTTP implementation of PrepClient. No UI changes required.
-export { mockClient as api } from "./mock-client";
+// The application uses real FastAPI services and validated browser storage.
+import { createHttpClient } from "./http-client";
+export const api = createHttpClient();
 export type * from "./types";

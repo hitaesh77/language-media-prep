@@ -11,9 +11,11 @@ export function LoadingScreen() {
       <div
         className="indeterminate"
         role="progressbar"
-        aria-label="Mock vocabulary generation"
+        aria-label="Vocabulary generation"
       />
-      <p className="notice">Loading a demo result. No AI service is being called.</p>
+      <p className="notice">
+        Generating vocabulary from your selected passages. This may take a minute.
+      </p>
     </div>
   );
 }
