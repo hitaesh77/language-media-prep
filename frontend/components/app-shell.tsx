@@ -25,13 +25,15 @@ export function AppShell({ screen, onHome, children }: AppShellProps) {
         : "flow-page";
 
   return (
-    <div className="app-shell">
+    <div
+      className={`app-shell ${screen === "home" ? "library-shell" : "workspace-shell"}`}
+    >
       <header>
         <button className="logo" onClick={onHome} aria-label="Lingo home">
           <BrandLogo />
         </button>
         {screen === "home" ? (
-          <span className="home-link">Your library</span>
+          <span className="home-link">Arabic vocabulary workspace</span>
         ) : (
           <nav aria-label="Learning steps">
             {["Add content", "Customize", "Vocabulary", "Practice"].map((label, i) => (
@@ -50,7 +52,6 @@ export function AppShell({ screen, onHome, children }: AppShellProps) {
       <footer>
         <span className="footer-brand">
           <BrandLogo />
-          <span>A few words before you go.</span>
         </span>
       </footer>
     </div>

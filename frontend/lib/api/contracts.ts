@@ -1,3 +1,4 @@
+import { CATEGORIES, type Category } from "./types";
 import type { GenerationMetadata, PageReference, SavedSet, Segment } from "./types";
 
 export function invalid(): never {
@@ -84,6 +85,7 @@ export function metadata(value: unknown): GenerationMetadata {
 }
 export function readSavedSet(value: unknown): SavedSet {
   const s = object(value);
+  if (s.starred !== undefined && typeof s.starred !== "boolean") return invalid();
   const text = string(s.text);
   validText(text);
   const segments = readSegments(s.segments, text);
@@ -111,7 +113,18 @@ export function readSavedSet(value: unknown): SavedSet {
       count * selected.length > 300)
   )
     return invalid();
+  const categories = preferences.categories;
+  if (
+    categories !== undefined &&
+    (!Array.isArray(categories) ||
+      !categories.length ||
+      categories.length > 5 ||
+      new Set(categories).size !== categories.length ||
+      categories.some((c) => !CATEGORIES.includes(c as Category)))
+  )
+    return invalid();
   const prefs = {
+    ...(categories !== undefined ? { categories: categories as Category[] } : {}),
     level: string(preferences.level, 100),
     variety: string(preferences.variety, 100),
     language: string(preferences.language, 100),
@@ -159,6 +172,7 @@ export function readSavedSet(value: unknown): SavedSet {
     preferences: prefs,
     vocabulary,
     createdAt: s.createdAt,
+    ...(s.starred !== undefined ? { starred: s.starred as boolean } : {}),
     ...(pages ? { pages } : {}),
     ...(generation ? { generation } : {}),
   };

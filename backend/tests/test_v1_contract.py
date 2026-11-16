@@ -334,3 +334,27 @@ def test_card_count_caps_each_passage_and_reports_shortfall(provider):
     response = client.post("/api/generate", json=request_body(cards_per_passage=3))
     assert response.status_code == 200
     assert "2 of 3" in response.json()["notice"]
+
+
+@pytest.mark.parametrize("categories", [[], ["adverbs"], ["nouns", "nouns"], "nouns"])
+def test_category_validation(categories):
+    assert (
+        client.post(
+            "/api/generate", json=request_body(categories=categories)
+        ).status_code
+        == 422
+    )
+
+
+def test_category_generation_forwards_selection_and_rejects_phrases(provider):
+    body = request_body(categories=["nouns", "adjectives", "roots"])
+    provider["content"] = json.dumps({"cards": [card()]})
+    assert client.post("/api/generate", json=body).status_code == 200
+    payload = provider["calls"][0]
+    settings = json.loads(payload["messages"][1]["content"])["settings"]
+    assert settings["categories"] == body["categories"]
+    assert "individual source words" in payload["messages"][0]["content"]
+    provider["content"] = json.dumps(
+        {"cards": [card(expression=" ".join(TEXT.split()[:2]))]}
+    )
+    assert client.post("/api/generate", json=body).status_code == 502

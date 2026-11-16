@@ -1,10 +1,39 @@
 # Progress log
 
-Last updated: 2026-10-30.
+
+## Current handoff - November 16, 2026 (supersedes historical summaries below)
+
+**Latest branding:** Replaced the provisional vector with the supplied white dragon/Lingo PNG in both shared logo placements; replaced the ICO and PNG favicons with the supplied matching blue-dragon assets. Originals were copied without image edits; responsive sizing preserves the logo aspect ratio. Earlier provisional-brand descriptions below are historical.
+
+
+**Latest wallpaper:** Replaced the initial 618 x 497 JPEG with the user-supplied original 3840 x 2160 WebP (550,722 bytes), without resizing/recompression. The CSS uses a new asset URL so cached copies of the old JPEG are not reused. See the latest entry for verification.
+
+**Latest visual revision:** The user's hill/sky wallpaper and bottom-left reference now guide the site: a rectangular translucent library panel, right-hand Library filters (All sets/Starred), compact glossy controls and white dragon identity. On mobile the filters move above the set list. Stars persist in the existing browser library and survive regeneration; older sets remain compatible. Storage details are expandable in the sidebar. This supersedes the earlier near-white rounded Aero styling; there are no copied greeting/taglines or decorative window controls. Validation for this revision is recorded in the latest entry below; earlier verification paragraphs describe the previous revision.
+
+Implemented the October 30 stakeholder review refinements: persisted category controls replace proficiency UI; categorized generation offers individual source words, optional AI root notes, and rejects phrase output. Source text, full stored context, stable IDs, passage selection and familiar exclusion remain. Flashcards show sentence/excerpt context; practice pauses between passage-based batches of at most ten. User confirmed Frutiger Aero before styling changes; a provisional vector dragon accompanies the name. Generic greetings/taglines are removed. Home explains browser persistence, transient drafts/practice, site-data deletion and lack of original-PDF retention/cloud sync.
+
+Larger-book handling was investigated, not implemented. The 18 MB book still exceeds current 4 MiB/20-page/20,000-character limits. See [bounded page-range proposal and hosting findings](larger-books.md). Cloud PDF retention is an optional proposal, not a firm stakeholder requirement. Subtitle-file preparation and ranking/morphology/rare-word/gamification ideas remain later work; this review does not establish automatic discovery as a requirement. No incomplete V1 requirement has been silently moved to V2.
+
+Review evidence: Khanh Tran described the MVP as usable/promising and valued relevant vocabulary, passage choice and familiar filtering. This is perceived usefulness for one stakeholder, not a measured learning outcome. No live category/root/meaning accuracy or book benchmark was performed. No credentials/evidence files were read or committed.
+
+Earlier review verification (before the latest visual revision): 92 backend tests passed; 24 frontend tests passed; production build including TypeScript passed; both fixture-backed browser scripts passed against the final build. The review script covers category defaults/empty selection/persistence, shortened context, 10/5/4-card passage batches and mobile overflow; the full smoke covers text/PDF processing, familiar filtering, regeneration/error recovery, refresh, deletion and Home during loading. Desktop/mobile screenshots were inspected. Changed frontend files passed Prettier and git diff --check passed. Earlier PDF deadline failures during concurrent build/tests and the initial PDF browser failure cleared in isolated reruns; limits were not relaxed. No paid model calls or deployed checks were made. Isolated QA servers were stopped.
+
+## Current next steps (planning only)
+
+1. Review representative Arabic category selections, meanings and optional roots with a proficient reviewer. Record errors, real latency and reported usage; stakeholder usefulness is not evidence of learning improvement.
+2. Prototype the user's browser-side PDF splitting idea: keep the original local for the session, choose a page range, create valid size-bounded sub-PDFs, extract sequentially and merge responses in original order. Preserve original page references and stable source IDs, support failed-chunk retry/cancellation, and retain server limits. Start with selected chapters within the existing 20,000-character combined-source cap. See [larger-book design candidates and checks](larger-books.md); no 18 MB/full-book support is implemented or benchmarked. Local/separately hosted extraction remains an alternative.
+3. Add movie/video preparation through user-supplied SRT/VTT subtitles as the next media increment: validate bounded files, preserve original Arabic, stable cue IDs and timestamps, select time ranges, then reuse vocabulary selection, familiar filtering and practice. Test malformed cues, timestamp handling, grounding and the complete subtitle-to-practice flow. This is subtitle input, not video/audio upload, transcription, OCR, playback, Netflix or YouTube integration. Automatic subtitle discovery remains a conditional feasibility idea, not a stakeholder-established requirement or prerequisite.
+4. Verify a hosted preview with the real deployment configuration and request budgets; keep model credentials on the backend. Preserve browser persistence/error handling and existing limits until replacements are tested. Earlier V2 saved-set scope remains recorded; cloud PDF storage is optional and is not needed for this prototype.
+5. Later backlog: essential versus nice-to-have ranking; optional verb forms/brief conjugation notes; refine AI root notes; exploratory rare-word collection/gamification. Final dragon branding remains flexible. These are unimplemented ideas, not additions to the initial slice. Plan a small evaluation of preparation time, interruptions and comprehension before claiming learning outcomes.
+
+No incomplete V1 requirement is reassigned by this planning list. Hosted deployment, larger-book capacity and learning effectiveness remain unverified.
+
+
+Historical summary last updated: 2026-10-30.
 
 Use this file as the handoff for the next work session. Read [release requirements](requirements.md), [architecture](architecture.md), and the [README](../README.md) alongside it. Requirements are targets; the status below distinguishes implementation from release completion.
 
-## Current handoff
+## Historical handoff (October 30)
 
 **Count selector refinement (2026-10-30):** Customize now offers Automatic, 3, 5, 10 and Custom. Custom uses a validated whole-number input and shows the calculated total; saved non-preset values reopen as Custom. Existing API and generation limits remain unchanged.
 
@@ -38,7 +67,7 @@ The user is happy with the frontend design. For the next backend session, start 
 | Semester additions | Architecture records an initial public-document subtitle-provider feasibility check. | SRT/VTT parsing and timestamps, upload fallback, segment selection, conditional discovery, proficient review, baseline comparisons, stakeholder testing, pilot, hosted deployment, and final evidence. No live provider coverage or evaluation results established. |
 | Documentation | Setup and architecture exist; release requirements and this log now capture scope and handoff. | Keep API contracts, environment setup, actual verification results, unresolved decisions, and known limitations synchronized with implementation. |
 
-## Next session
+## Historical next-session notes
 
 APIs and frontend HTTP integration are implemented and tested with fixture generation. No V2 storage accounts need provisioning yet. Prioritize live generation review, broader successful Arabic PDF fixtures and hosted verification next.
 
@@ -166,3 +195,47 @@ Append a dated entry for each meaningful change with: changes made; verification
 - Next step: use presets or Custom in Customize; live meaning/latency and hosted verification remain outstanding.
 
 - Final checks: production build including TypeScript passed; browser checks passed for exactly five dropdown options, preset selection, custom 7, empty/zero/fractional/over-limit rejection, back-navigation restoration, switching back to Automatic and mobile overflow. API parsing was fixture-routed and no generation request was made. git diff --check passed. Stopped the isolated frontend QA server; user servers were untouched.
+
+
+### 2026-11-16 - October 30 stakeholder review implementation
+
+- Replaced learner-level controls with multi-select nouns/verbs/adjectives/prepositions/roots, defaulting to the first three. Added API/browser boundary validation and persisted categories without changing old saved sets. Legacy proficiency/uncategorized API clients remain compatible. OpenAI categorized requests offer only single-word candidates; generic provider phrase output fails validation. Optional roots are unreviewed meaning notes tied to attested words; semantic classification is not independently proven.
+- Added display-only sentence/excerpt context and passage-ordered unfamiliar-card batches of at most ten, with explicit continuation and per-batch visited-card counts. Kept original source/context/IDs and familiar flags intact. Added unit/API tests and a fixture-only browser regression for the revised controls and batch boundaries; updated the existing smoke for changed UI.
+- Confirmed Frutiger Aero with the user before updating CSS surfaces/buttons/header and adding a provisional vector dragon mark. Removed generic greeting/taglines and explained same-browser storage lifecycle on Home. No permanent PDF retention, database, authentication, subtitles or exploratory ranking/gamification feature was added.
+- Documented current independent PDF/source/storage/generation limits, Vercel's published payload constraint, and a provisional bounded larger-book/page-range approach in larger-books.md. Current limits remain unchanged; no 18 MB upload or book benchmark is claimed. Updated README, architecture and requirements, preserving incomplete V1 obligations and clarifying optional cloud storage.
+- Verification: final results pending below. Initial frontend suite passed 23 tests and production build/typecheck passed after installing already-declared dependencies; no dependency declaration/lockfile changed. Initial backend run: 89 passed, two PDF deadline failures under concurrent build; initial full smoke failed at PDF extraction. New fixture-only browser review passed with inspected desktop/mobile screenshots. No .env was opened or paid provider request made.
+- Remaining gaps: live semantic category/root/meaning quality, representative Arabic PDF compatibility, larger-book implementation/benchmark, hosting and effectiveness evaluation. Next step: complete isolated reruns, then review real Arabic output and prioritize bounded book support without cloud-storage prerequisites.
+
+
+- Final verification for November 16: 92 backend tests passed in 147.13 seconds; 24 frontend tests passed. Final production build/TypeScript passed. Both browser-flow.py and browser-review.py passed on the final build using only the fixture backend. Final desktop practice screenshot inspected, including corrected ellipsis/separator rendering; mobile screenshot inspected and overflow assertion passed. Prettier and git diff --check passed. Earlier concurrent-run PDF deadline failures and the first full-smoke PDF failure cleared on isolated reruns without changing limits. QA servers were stopped; no user servers were changed. Larger-book processing, live semantic quality, hosted verification and learning outcomes remain unverified. Next: proficient review of real categorized output, then bounded page-range extraction/benchmark if larger-book implementation is prioritized.
+
+
+### 2026-11-16 - Logged browser PDF splitting and next media steps
+
+- Recorded the user's browser-held original / valid sub-PDF uploads / consolidated extraction idea in larger-books.md and the current handoff. Included actual byte-size checks, bounded page ranges, sequential requests, retry/cancellation, original page order, stable source IDs and the separate combined-source/storage limits. Kept local/separately hosted extraction as an alternative; no dependency or capacity target is approved by this note.
+- Added concrete next steps for subtitle-based movie/video preparation using SRT/VTT, preserved cue timestamps/IDs, time-range selection and the existing vocabulary/practice flow. Automatic discovery remains conditional; video/audio upload, transcription, playback, OCR and platform integrations are not added. Recorded quality review, deployment/evaluation work and lower-priority ranking/morphology/branding/gamification ideas separately.
+- Verification: cross-checked these notes against README, architecture, requirements and the current handoff; git diff --check passed. Documentation only: backend/frontend tests and build were not rerun; prior implementation results above are unchanged. No book/subtitle processing, cloud storage or live provider integration was implemented or tested in this update.
+- Remaining gaps: browser PDF fidelity/memory and chunk provenance, larger-source persistence, representative Arabic book compatibility, subtitle implementation, live linguistic quality and hosted/effectiveness verification. Next concrete step: prototype valid browser-side page-range splitting with synthetic PDFs and test exact-source extraction/merge behavior before adding it to the product flow.
+
+
+### 2026-11-16 - Hill-and-sky rectangular desktop styling and starred sets
+
+- Used the user-supplied frutiger_aero.jpg unchanged as the product wallpaper in frontend/public/branding/hills-wallpaper.jpg; the four-screen image served only as a visual reference, not as instructions or a shipped screenshot. Followed the bottom-left composition with boxy glass panels, blue highlights, compact controls, a right sidebar and responsive top filters. Preserved the no-greetings/taglines decision and the preparation/practice flow. Existing Arabic text/RTL and stable source references remain unchanged.
+- Made the sidebar functional with All sets and Starred views rather than duplicate Home/Saved sets destinations. Added an optional validated browser-saved starred flag, star/unstar actions, counts and empty state; preserved stars through regeneration and kept write failures from changing saved data. Updated the historical mock client to satisfy the interface. No cloud storage, account, database, API generation or PDF limits changed.
+- Added unit coverage for persistence, regeneration, invalid star values, missing sets and failed saves. Added an isolated browser-library.py regression covering desktop/mobile layout, star/refresh/unstar/filtering, deletion/cancel, storage explanation and New set. Fixture sets exist only in isolated browser tests, never as production seeds. Updated the earlier browser review to expand storage details.
+- Final verification: 26 frontend tests passed; 92 backend tests passed (182.65 seconds). Production build/TypeScript passed after final spacing/rectangular-control polish. All three browser scripts (library, review and full flow) passed against the final build; desktop/mobile screenshots were inspected and overflow checks passed. The full flow uses real text/PDF APIs with a fixture model; library tests block API calls. Changed frontend files passed Prettier; git diff --check passed. No .env or stakeholder evidence was read, and no paid generation call was made. Isolated QA servers were stopped; user servers were untouched.
+- Remaining gaps: wallpaper is the supplied 618 x 497 image and softens when enlarged; broader real-browser/device visual review and live linguistic/hosted validation remain outstanding. Next: user reviews the rectangular desktop direction, then refine styling from that feedback. Larger-book and subtitle ideas remain planning items above.
+
+
+### 2026-11-16 - Replaced fuzzy wallpaper with supplied 4K WebP
+
+- Copied windows_xp.webp unchanged to frontend/public/branding/hills-wallpaper.webp and removed the superseded low-resolution JPEG. Updated CSS and the library browser assertion to the new URL; retained the existing cover positioning and glass layout. Updated README and current handoff to reflect the actual image dimensions/size.
+- Verification: Pillow confirmed 3840 x 2160; original file is 550,722 bytes. Source/destination SHA-256 hashes match. Production build/TypeScript and the desktop/mobile library browser regression passed; desktop screenshot inspected. git diff --check passed. Isolated preview server was stopped. No application logic or backend changed, so unit/backend tests were not rerun.
+- Remaining gaps: physical 4K/high-DPI device review is not performed. Next: check the rebuilt desktop/mobile library uses the replacement image and preserves layout.
+
+
+### 2026-11-16 - Adopted supplied white logo and matching favicons
+
+- Replaced the provisional vector/logo text with the uploaded white dragon/Lingo PNG through the shared BrandLogo component. Updated desktop/mobile/footer sizing to preserve its 2172 x 724 aspect ratio and transparency. Copied the supplied ICO (16-256 px variants) and 512 x 512 PNG to the existing favicon assets; versioned the PNG metadata URL to avoid reusing the old cached image. Updated the browser review's image accessibility assertion and README.
+- Verification: inspected image metadata (RGBA logo/PNG, ICO sizes); source/destination logo SHA-256 hashes match. Production build/TypeScript and desktop/mobile library browser regression passed. Inspected desktop header and mobile content/footer screenshots. Browser confirmed the logo decoded, favicon metadata points to the new PNG URL, and ICO/PNG endpoints both return HTTP 200 with expected MIME types and byte-identical content to the installed assets. git diff --check passed. Preview server stopped. No image generation, crop or recompression was performed. Backend/unit tests were not rerun for this asset/display-only change.
+- Remaining gaps: physical browser-tab favicon cache behavior and real-device review remain unverified. Next: inspect logo layout at desktop/mobile sizes and check both favicon endpoints in the built app.

@@ -44,6 +44,10 @@ export function VocabularyScreen({
           This source is legacy demo PDF sample text, not an extracted original PDF.
         </p>
       )}
+      <p className="notice">
+        Practice groups unfamiliar cards by passage in batches of at most 10, with a pause
+        between batches.
+      </p>
       <div className="vocab-toolbar">
         <div className="filters">
           {["All", "New", "Familiar"].map((f) => (
@@ -132,7 +136,7 @@ export function VocabularyScreen({
       {!unfamiliar.length && (
         <div className="empty">
           <Check />
-          <h3>All familiar. Ready for the story.</h3>
+          <h3>All words are marked familiar.</h3>
           <p>Unmark a word above to include it in practice.</p>
         </div>
       )}

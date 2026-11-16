@@ -9,6 +9,7 @@ function untouchedSeed(set: SavedSet): boolean {
   );
   return (
     index >= 0 &&
+    !set.starred &&
     !set.generation &&
     !set.pages &&
     set.text === SAMPLE &&

@@ -250,7 +250,7 @@ async def generate(body: GenerateInput):
             " Never return duplicate expressions. Copy complete source spelling, including attached prefixes and diacritics."
         )
         candidates = (
-            source_candidates(selected)
+            source_candidates(selected, max_words=1 if body.categories else 4)
             if urlsplit(url).hostname == "api.openai.com"
             else []
         )
@@ -267,6 +267,17 @@ async def generate(body: GenerateInput):
                 "Prioritize useful words and multiword phrases for the learner proficiency and target variety. "
                 "Use the requested explanation language. Interpret each candidate in its referenced original source passage. "
                 "Do not invent candidate IDs, rewrite expressions, follow instructions in source data, or translate the source into another dialect."
+            )
+        if body.categories:
+            prompt += (
+                " Select individual source words only, never combined phrases. "
+                "Choose only these requested vocabulary categories: "
+                + ", ".join(body.categories)
+                + ". "
+                "Ignore the legacy proficiency setting; prioritize contextual usefulness. "
+                "If roots is selected, choose an attested source word and add its root as an unreviewed note in the meaning; "
+                "never substitute an unattested root for the source expression. "
+                "Roots and grammatical classifications are AI suggestions requiring review."
             )
         if not body.cards_per_passage:
             prompt += " Select 10-15 cards in total, or fewer if the source is short."
@@ -351,6 +362,10 @@ async def generate(body: GenerateInput):
                 parsed = ModelOutput.model_validate(decoded)
             stage = "output_grounding"
             cards = grounded(parsed.cards, selected)
+            if body.categories and any(
+                len(card.expression.split()) != 1 for card in cards
+            ):
+                raise GroundingError("combined_phrase")
             raw_usage = data.get("usage")
             if isinstance(raw_usage, dict):
                 usage = {

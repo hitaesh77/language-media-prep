@@ -40,7 +40,17 @@ class GenerateInput(SourceInput):
     ] = "Modern Standard Arabic"
     explanation_language: Literal["English", "Arabic"] = "English"
     cards_per_passage: int | None = Field(default=None, strict=True, ge=1, le=15)
+    categories: (
+        list[Literal["nouns", "verbs", "adjectives", "prepositions", "roots"]] | None
+    ) = Field(default=None, min_length=1, max_length=5)
     mode: Literal["baseline", "llm"] = "baseline"
+
+    @field_validator("categories")
+    @classmethod
+    def unique_categories(cls, values):
+        if values is not None and len(values) != len(set(values)):
+            raise ValueError("Choose distinct vocabulary categories.")
+        return values
 
     @field_validator("segment_ids")
     @classmethod

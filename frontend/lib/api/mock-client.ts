@@ -220,11 +220,21 @@ export const mockClient: PrepClient = {
       id: request.id || crypto.randomUUID(),
       vocabulary,
       createdAt: previous?.createdAt || new Date().toISOString(),
+      ...(previous?.starred !== undefined ? { starred: previous.starred } : {}),
     };
     write([...existing.filter((s) => s.id !== set.id), set]);
     return set;
   },
 
+  async updateStarred(id, starred) {
+    if (typeof starred !== "boolean") throw Error("Choose a valid star status.");
+    const sets = await read();
+    const set = sets.find((s) => s.id === id);
+    if (!set) throw Error("Set not found.");
+    const updated = { ...set, starred };
+    write(sets.map((s) => (s.id === id ? updated : s)));
+    return updated;
+  },
   async updateFamiliar(id, itemIds) {
     const sets = await read();
     const set = sets.find((s) => s.id === id);

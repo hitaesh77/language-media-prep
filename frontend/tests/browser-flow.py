@@ -36,7 +36,7 @@ if __name__ == "__main__":
         errors = []
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto("http://localhost:3100")
-        expect(page.get_by_text("Your next story starts here.")).to_be_visible()
+        expect(page.get_by_text("No saved sets yet.")).to_be_visible()
         page.get_by_role("button", name="New set").click()
         expect(page.get_by_role("button", name="Go home", exact=True)).to_be_visible()
         page.get_by_label("Source name").fill("Browser text test")
@@ -47,7 +47,9 @@ if __name__ == "__main__":
         page.locator(".passages input").nth(1).uncheck()
         page.get_by_role("button", name="Use selected passages").click()
         expect(page.get_by_role("button", name="Go home", exact=True)).to_be_visible()
-        page.get_by_role("button", name="Advanced", exact=True).click()
+        expect(page.get_by_label("Nouns", exact=True)).to_be_checked()
+        expect(page.get_by_label("Prepositions", exact=True)).not_to_be_checked()
+        page.get_by_label("Roots", exact=True).check()
         page.get_by_role("button", name="Egyptian Arabic", exact=True).click()
         page.get_by_role("button", name="Arabic", exact=True).click()
         expect(page.get_by_role("button", name="Spanish", exact=True)).to_have_count(0)
@@ -144,7 +146,7 @@ if __name__ == "__main__":
         ).to_have_count(0)
         page.get_by_role("button", name="Delete Browser text test", exact=True).click()
         page.get_by_role("button", name="Delete", exact=True).click()
-        expect(page.get_by_text("Your next story starts here.")).to_be_visible()
+        expect(page.get_by_text("No saved sets yet.")).to_be_visible()
         page.screenshot(path=str(out / "mobile-empty-home.png"), full_page=True)
         page.get_by_role("button", name="New set").click()
         page.get_by_role("button", name="Try a sample").click()
@@ -155,7 +157,7 @@ if __name__ == "__main__":
         page.get_by_role("button", name="Generate vocabulary", exact=True).click()
         expect(page.locator(".loading")).to_be_visible()
         page.get_by_role("button", name="Go home", exact=True).click()
-        expect(page.get_by_text("Your next story starts here.")).to_be_visible()
+        expect(page.get_by_text("No saved sets yet.")).to_be_visible()
         expect(page.locator(".loading")).to_have_count(0)
         for route in held:
             try:

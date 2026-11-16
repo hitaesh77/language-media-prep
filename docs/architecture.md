@@ -1,3 +1,19 @@
+## Latest visual/library revision (November 16)
+
+The supplied hill-and-sky wallpaper and bottom-left reference now define a rectangular translucent desktop layout. Home has a saved-set panel and Library sidebar with All sets/Starred filters; on mobile the sidebar becomes top filters. No redundant sidebar Home destination, imitation window controls or reference-image taglines were introduced. Preparation/practice share sharper controls and readable light work surfaces over the wallpaper.
+
+SavedSet adds optional starred: boolean. The browser boundary validates it, existing sets without it are unchanged, and updateStarred writes through the existing failure-safe Library. Regeneration preserves the prior star value, and stars do not enter provider requests. Star/filter operations need no backend/cloud service. Storage lifecycle details remain available in the library sidebar. Earlier style descriptions below are historical.
+
+# Current October 30 review implementation (November 16)
+
+This section supersedes conflicting historical notes below. Customize uses saved category selections (default nouns/verbs/adjectives; optional prepositions/roots) instead of proficiency controls. The backend retains legacy proficiency/uncategorized requests for compatibility. Categorized OpenAI requests offer single-word candidates; all categorized LLM outputs reject whitespace-separated phrases after grounding. Semantic category/root accuracy is prompted, not proven by occurrence checks. Roots are optional AI notes on exact source words. Existing source text, IDs and complete stored contexts are unchanged.
+
+Flashcard sentence/excerpt selection is display-only, using punctuation and a 24-word long-sentence threshold; long excerpts include roughly four surrounding words on each side. Practice snapshots unfamiliar cards in passage order into batches of at most ten and pauses at completion before explicit continuation. Progress is per batch and session-only. Existing saved phrase cards remain usable.
+
+User-confirmed Frutiger Aero styling uses CSS gradients/glass and a provisional vector dragon mark. No generic greeting/marketing tagline remains. Home explains same-browser persistence, transient drafts/practice, deletion on site-data clearing and absence of original-PDF retention/cloud sync. The review supports perceived usefulness, not learning effectiveness.
+
+Cloud PDF retention is not a firm stakeholder requirement; earlier V2 original-PDF retention/access notes are optional proposals. The earlier V2 durable saved-set scope is retained, with no new cloud prerequisite from this review. No database/authentication/cloud prerequisites were added. Larger books remain a bounded investigation: [findings and proposed page-range increment](larger-books.md). Current upload/extraction limits remain unchanged pending implementation and measurement.
+
 # Architecture and product decisions
 
 ## Confirmed direction

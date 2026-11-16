@@ -7,7 +7,7 @@ export function LoadingScreen() {
         <Sparkles size={36} />
       </div>
       <h1>Preparing your vocabulary…</h1>
-      <p>Finding a few words for your next story.</p>
+      <p>Generating vocabulary from your selected passages.</p>
       <div
         className="indeterminate"
         role="progressbar"

@@ -18,13 +18,15 @@ class Candidate:
     segment_id: str
 
 
-def source_candidates(segments: list[Segment]) -> list[Candidate]:
+def source_candidates(
+    segments: list[Segment], max_words: int = MAX_WORDS
+) -> list[Candidate]:
     # Keep exact characters and whitespace. Do not stem, normalize or detach clitics.
     bins = []
     seen = set()
     for segment in segments:
         words = list(WORD.finditer(segment.text))
-        for length in range(1, MAX_WORDS + 1):
+        for length in range(1, max_words + 1):
             bucket = []
             for start in range(len(words) - length + 1):
                 span = words[start : start + length]

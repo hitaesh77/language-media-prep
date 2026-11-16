@@ -60,7 +60,7 @@ export function ContentScreen({
     <>
       <Title
         title="Add your content"
-        subtitle="A story, an article, a little curiosity. Bring the Arabic you want to understand."
+        subtitle="Paste Arabic text or upload a short text-based PDF."
       />
       <SourceNameInput name={name} onChange={onNameChange} disabled={busy} />
       <>

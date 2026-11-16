@@ -29,3 +29,11 @@ def test_large_candidate_pool_is_bounded_deterministic_and_covers_source_positio
     assert candidates == source_candidates(segments)
     assert {c.segment_id for c in candidates} == {s.id for s in segments}
     assert any(" " in c.expression for c in candidates)
+
+
+def test_single_word_candidates_keep_words_separate():
+    segments = parse_source(
+        "\u0627\u0644\u0645\u0643\u062a\u0628\u0629 \u0627\u0644\u0642\u062f\u064a\u0645\u0629"
+    )
+    candidates = source_candidates(segments, max_words=1)
+    assert [c.expression for c in candidates] == segments[0].text.split()

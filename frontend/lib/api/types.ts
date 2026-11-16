@@ -12,7 +12,17 @@ export type GenerationMetadata = {
   cost: null;
   notice: string;
 };
+export const CATEGORIES = [
+  "nouns",
+  "verbs",
+  "adjectives",
+  "prepositions",
+  "roots",
+] as const;
+export type Category = (typeof CATEGORIES)[number];
+export const DEFAULT_CATEGORIES: Category[] = ["nouns", "verbs", "adjectives"];
 export type Preferences = {
+  categories?: Category[];
   level: string;
   variety: string;
   language: string;
@@ -36,10 +46,14 @@ export type SavedSet = {
   preferences: Preferences;
   vocabulary: Vocabulary[];
   createdAt: string;
+  starred?: boolean;
   pages?: PageReference[];
   generation?: GenerationMetadata;
 };
-export type GenerateRequest = Omit<SavedSet, "id" | "vocabulary" | "createdAt"> & {
+export type GenerateRequest = Omit<
+  SavedSet,
+  "id" | "vocabulary" | "createdAt" | "starred"
+> & {
   id?: string;
 };
 export interface PrepClient {
@@ -49,5 +63,6 @@ export interface PrepClient {
   updateFamiliar(id: string, itemIds: string[]): Promise<SavedSet>;
   getSet(id: string): Promise<SavedSet>;
   deleteSet(id: string): Promise<void>;
+  updateStarred(id: string, starred: boolean): Promise<SavedSet>;
   cancelPending(): void;
 }

@@ -2,6 +2,8 @@ import type { CSSProperties } from "react";
 import { ArrowRight, RotateCcw } from "lucide-react";
 
 type CompletionScreenProps = {
+  batchLabel: string;
+  onNextBatch?: () => void;
   sourceName: string;
   reviewedCount: number;
   total: number;
@@ -13,6 +15,8 @@ type CompletionScreenProps = {
 };
 
 export function CompletionScreen({
+  batchLabel,
+  onNextBatch,
   sourceName,
   reviewedCount,
   total,
@@ -25,7 +29,7 @@ export function CompletionScreen({
   return (
     <div className="completion">
       <div className="celebrate">✧　✦　✧</div>
-      <h1>Nice work!</h1>
+      <h1>{batchLabel}</h1>
       <p>
         You’ve reviewed {reviewedCount} words from
         <br />
@@ -62,6 +66,11 @@ export function CompletionScreen({
       </div>
       <p className="notice">Review counts reflect cards visited, not a test of recall.</p>
       <div className="completion-actions">
+        {onNextBatch && (
+          <button className="primary" onClick={onNextBatch}>
+            Next batch <ArrowRight size={16} />
+          </button>
+        )}
         <button className="primary" onClick={onReviewAgain}>
           <RotateCcw size={16} />
           Review again

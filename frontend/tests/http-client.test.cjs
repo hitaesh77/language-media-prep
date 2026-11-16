@@ -443,3 +443,53 @@ test("fifty cards across ten passages save and reopen with passage provenance", 
   for (const s of many)
     assert.equal(set.vocabulary.filter((v) => v.sourceId === s.id).length, 5);
 });
+
+test("category selection persists through reopen, is forwarded, and rejects invalid selections", async () => {
+  const { api, calls } = setup();
+  const categories = ["nouns", "verbs", "roots"];
+  const req = { ...request(), preferences: { ...preferences, categories } };
+  const set = await api.generateVocabulary(req);
+  assert.deepEqual((await api.getSet(set.id)).preferences.categories, categories);
+  assert.deepEqual(
+    JSON.parse(calls.find((c) => c.url.endsWith("/api/generate")).body).categories,
+    categories,
+  );
+  for (const categories of [[], ["nouns", "nouns"], ["adverbs"]]) {
+    await assert.rejects(
+      api.generateVocabulary({ ...req, preferences: { ...preferences, categories } }),
+      /categor/i,
+    );
+  }
+});
+
+test("stars persist without changing content, survive regeneration, and fail safely", async () => {
+  const { api, calls, storage } = setup();
+  const set = await api.generateVocabulary(request());
+  const beforeCalls = calls.length;
+  const starred = await api.updateStarred(set.id, true);
+  assert.deepEqual(starred, { ...set, starred: true });
+  assert.equal(calls.length, beforeCalls);
+  const reopened = createHttpClient({ storage });
+  assert.equal((await reopened.getSet(set.id)).starred, true);
+  const regenerated = await api.generateVocabulary({ ...request(), id: set.id });
+  assert.equal(regenerated.starred, true);
+  const originalWrite = storage.setItem;
+  storage.setItem = () => {
+    throw Error("quota");
+  };
+  await assert.rejects(api.updateStarred(set.id, false), /Could not save/);
+  assert.equal((await api.getSet(set.id)).starred, true);
+  storage.setItem = originalWrite;
+  assert.equal((await api.updateStarred(set.id, false)).starred, false);
+  await assert.rejects(api.updateStarred("missing", true), /not found/i);
+  await assert.rejects(api.updateStarred(set.id, "yes"), /valid star/i);
+});
+
+test("invalid saved star values are rejected without overwriting the library", async () => {
+  const { api, saved } = setup();
+  const set = await api.generateVocabulary(request());
+  const raw = JSON.stringify([{ ...set, starred: "yes" }]);
+  saved.set("sahih-sets-v1", raw);
+  await assert.rejects(api.listSets(), /could not be read/i);
+  assert.equal(saved.get("sahih-sets-v1"), raw);
+});

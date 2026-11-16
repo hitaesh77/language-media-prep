@@ -1,6 +1,6 @@
 # Lingo
 
-An Arabic-first vocabulary preparation prototype built with Next.js App Router, TypeScript, Tailwind CSS and Lucide icons. The V1 frontend follows the supplied Sahih mockup: saved sets, text/PDF input, paragraph selection, learner settings, vocabulary management, flashcards and completion.
+An Arabic-first vocabulary preparation prototype built with Next.js App Router, TypeScript, Tailwind CSS and Lucide icons. The frontend uses a stakeholder-confirmed Frutiger Aero direction and provides: saved sets, text/PDF input, paragraph selection, learner settings, vocabulary management, flashcards and completion.
 
 ## Run the frontend
 
@@ -20,7 +20,7 @@ Open http://localhost:3000 and run FastAPI on port 8000 in a second terminal (in
 - `frontend/components/screens/` contains a component for each step of the learning flow. Screens receive typed data and action callbacks; they do not navigate to one another or call the API directly.
 - `frontend/components/app-shell.tsx` owns the header, footer, and step indicator.
 - `frontend/components/flow-controls.tsx` contains shared form and heading controls.
-- `frontend/components/brand-logo.tsx` displays the supplied transparent Lingo logo in the header and footer. The logo lives in `frontend/public/branding/`; `frontend/app/favicon.ico` supplies the browser icon, with the PNG alternative configured in the root layout metadata.
+- `frontend/components/brand-logo.tsx` displays the user-supplied white dragon/Lingo PNG in the header and footer, stored in `frontend/public/branding/`; `frontend/app/favicon.ico` supplies the browser icon, with the PNG alternative configured in the root layout metadata.
 
 ## Frontend and backend integration
 
@@ -68,7 +68,7 @@ Generation failures now report specific, safe causes. Backend warnings include `
 
 Local API explorer: `http://127.0.0.1:8000/docs`. The app loads `backend/.env` explicitly at normal startup; tests stub dotenv loading and forbid live model requests. The developer's `.env` was not inspected during implementation. Install dependencies before starting; PDF extraction needs `pypdf` and `python-multipart`.
 
-For Vercel, use a backend project rooted at `backend/` and a Next.js project rooted at `frontend/`. `backend/vercel.json` sets a 90-second function duration for `app/main.py`. Configure backend LLM settings and exact `FRONTEND_ORIGINS`; the frontend adapter uses `NEXT_PUBLIC_API_URL`. No deployment has been verified. Keep paid generation protected/budgeted before making it public; CORS alone is not access control. Cloud sets/private PDF retention remain V2.
+For Vercel, use a backend project rooted at `backend/` and a Next.js project rooted at `frontend/`. `backend/vercel.json` sets a 90-second function duration for `app/main.py`. Configure backend LLM settings and exact `FRONTEND_ORIGINS`; the frontend adapter uses `NEXT_PUBLIC_API_URL`. No deployment has been verified. Keep paid generation protected/budgeted before making it public; CORS alone is not access control. Durable saved sets remain earlier V2 scope; private PDF retention is optional following the October 30 review.
 
 ## Verify
 
@@ -85,9 +85,9 @@ For consistent frontend formatting, run `npm.cmd run format` from `frontend/`.
 Use `npm.cmd run format:check` to check formatting without changing files.
 The shared rules are in `frontend/.prettierrc.json`. Python files follow Black formatting.
 
-Frontend contract tests cover source preservation, stable IDs, selected-source grounding, familiar persistence/filtering, regeneration, invalid input and corrupt storage. Backend tests cover API validation, mocked model output, bounded real PDF extraction and rejection cases. No lint configuration is present. Real HTTP integration is browser-tested with a fixture provider. Live AI meanings, representative successful Arabic PDF coverage, stakeholder review and effectiveness evaluation remain unverified.
+Frontend contract tests cover source preservation, stable IDs, selected-source grounding, familiar persistence/filtering, regeneration, invalid input and corrupt storage. Backend tests cover API validation, mocked model output, bounded real PDF extraction and rejection cases. No lint configuration is present. Real HTTP integration is browser-tested with a fixture provider. Live AI meanings, representative successful Arabic PDF coverage, broader stakeholder validation and effectiveness evaluation remain unverified.
 
-Proficiency, variety and explanation defaults are provisional. No stakeholder or evaluation outcomes are claimed. Browser storage has no encryption or cross-device sync. Only use bounded, non-sensitive demonstration passages.
+Variety and explanation defaults are provisional. The October 30 review supports perceived usefulness to one stakeholder; learning outcomes remain unmeasured. Browser storage has no encryption or cross-device sync. Only use bounded, non-sensitive demonstration passages.
 
 ## Optional browser integration check
 
@@ -111,3 +111,26 @@ Each passage preserves exact original text and IDs. Repeated expressions from di
 
 
 **Simplified count selector (2026-10-30):** Customize offers Automatic, 3, 5 or 10 cards per passage, plus Custom with a validated whole-number input. The current calculated total is shown separately. Existing saved targets outside the presets open in Custom; numeric/API limits remain 1-15 per passage and 300 total. Presets exceeding the current passage budget are disabled.
+
+
+### October 30 review updates (implemented November 16)
+
+Customize replaces proficiency controls with nouns, verbs, adjectives, optional prepositions and roots. New sets default to the first three. Categories are saved and forwarded to generation; OpenAI candidates are restricted to individual exact-source words, and phrase output is rejected for categorized requests. Attached Arabic prefixes/diacritics are preserved. Optional roots appear as AI notes attached to attested words, not invented source expressions. Category/root accuracy and meanings still require proficient review. Legacy API proficiency and uncategorized phrase cards remain compatible.
+
+Flashcards display the containing sentence; sentences over 24 whitespace-separated words use about four words either side of the expression, preserving the displayed substring. Original full context/source/IDs stay unchanged. Practice groups unfamiliar cards in source-passage order into batches of at most ten, with an explicit Next batch action after each batch. Counts describe visited cards in the current batch, not recall or learning outcomes.
+
+Saved extracted text, selections, preferences, vocabulary and familiar flags survive refresh/closing in the same browser/device/domain. Drafts and practice position disappear on refresh/closing; original PDFs are never retained. Site-data clearing deletes saved sets; private browsing may clear them when closed. No cloud sync is provided or required for this same-device flow.
+
+The user confirmed Frutiger Aero before the glass/blue/green styling update. A provisional vector dragon mark accompanies Lingo; final branding remains flexible. Generic greetings and marketing taglines were removed. The review supports usefulness to one stakeholder, not improved learning outcomes.
+
+The 18 MB book remains unsupported by the current upload route. See [larger-book investigation](docs/larger-books.md) for separate hosting, parser, source/storage limits and a bounded page-range proposal. Current 4 MiB/20-page limits remain in force. Cloud PDF retention is optional, superseding its earlier firm V2 wording; the prior V2 saved-set scope is retained.
+
+
+Review-specific browser regression: with the same isolated fixture/backend and frontend servers described above, run `python frontend/tests/browser-review.py`. It verifies categories, sentence excerpts, passage/batch boundaries, persistence and mobile overflow; it does not assess AI linguistic quality.
+
+
+### Rectangular desktop visual revision
+
+The supplied hill-and-sky wallpaper backs translucent rectangular panels inspired by the bottom-left design reference. Library filters offer All sets and Starred (top filters on phones), with stars saved in this browser and preserved through regeneration. Existing sets need no migration. Expand About browser storage for persistence details. No cloud service is required. The supplied wallpaper is the original 3840 x 2160 WebP (about 538 KiB), used without resizing or recompression.
+
+Run `python frontend/tests/browser-library.py` against the isolated frontend on port 3100 to check library styling, stars, persistence, deletion and mobile layout. This script seeds only its isolated test browser and blocks API calls; it does not alter the production library or claim AI integration results.

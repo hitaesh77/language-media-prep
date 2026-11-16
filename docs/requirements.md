@@ -1,6 +1,6 @@
 # Release requirements: V1 and semester scope
 
-Last updated: 2026-10-29.
+Last updated: 2026-11-16.
 
 This document records the agreed release scope supplied in the product brief. Requirements describe the target, not a claim that the feature is implemented. See [the progress log](progress-log.md) for current status and [architecture](architecture.md) for implementation details.
 
@@ -12,7 +12,7 @@ This document records the agreed release scope supplied in the product brief. Re
 
 ## Requirements
 
-Original brief requirements retain their release assignments. Persistent cloud sets and PDF originals were added to V2 by the user on October 29, 2026. V2* denotes conditional scope.
+Original brief requirements retain their release assignments. Cloud sets/PDF originals were recorded as V2 scope on October 29; the October 30 review clarifies that cloud PDF storage is not a firm stakeholder requirement. The prior V2 saved-set scope is retained; original-PDF retention/access is an optional proposal rather than a stakeholder-established prerequisite. V2* denotes conditional scope.
 
 V2: End-of-semester release adding movie/subtitle preparation, improving AI accuracy, and completing stakeholder validation.
 
@@ -42,7 +42,7 @@ V2: End-of-semester release adding movie/subtitle preparation, improving AI accu
 
 | Requirement | Release |
 | --- | --- |
-| Select proficiency level (Beginner, Intermediate, Advanced) | V1 |
+| Select vocabulary categories: nouns, verbs, adjectives; optional prepositions and roots (October 30 revision replaces proficiency controls) | V1 |
 | Select target Arabic variety (MSA or dialect) | V1 |
 | Select preferred explanation language | V1 |
 | Apply learner preferences to vocabulary generation | V1 |
@@ -55,12 +55,12 @@ V2: End-of-semester release adding movie/subtitle preparation, improving AI accu
 | --- | --- |
 | Integrate an LLM through secure server-side API calls | V1 |
 | Generate approximately 10-15 vocabulary words or phrases | V1 |
-| Prioritize vocabulary according to proficiency level | V1 |
-| Identify useful multiword expressions, not just individual words | V1 |
+| Prioritize contextually useful vocabulary from selected categories; grammatical classification requires review | V1 |
+| Prepare individual source words separately (October 30 revision); retain readable older phrase cards | V1 |
 | Provide contextual meanings for each expression | V1 |
 | Provide brief explanations in the learner's chosen language | V1 |
 | Include the original Arabic expression on each card | V1 |
-| Include the source sentence or passage for each expression | V1 |
+| Show the containing sentence in flashcards; crop very long sentences to roughly eight surrounding words | V1 |
 | Associate generated items with stable source references | V1 |
 | Validate that selected expressions occur in the original source | V1 |
 | Validate structured LLM responses before displaying results | V1 |
@@ -96,7 +96,7 @@ V2: End-of-semester release adding movie/subtitle preparation, improving AI accu
 | Display the Arabic word or phrase on the card front | V1 |
 | Reveal contextual meaning on the card back | V1 |
 | Display source context when reviewing a card | V1 |
-| Navigate between cards | V1 |
+| Navigate between cards, grouped by passage in batches of at most ten unfamiliar cards | V1 |
 | Track review progress within the current session | V1 |
 | Display a completion screen | V1 |
 | Allow users to restart the review | V1 |
@@ -144,14 +144,14 @@ V2: End-of-semester release adding movie/subtitle preparation, improving AI accu
 
 A database, authentication system, and permanent PDF storage remain unnecessary for V1. V1 may save extracted text, vocabulary and familiar flags in browser storage, clearly labeled as saved in this browser.
 
-#### V2 persistent storage (added October 29, 2026)
+#### V2 saved-set scope and optional PDF storage (October 30 clarification)
 
 | Requirement | Release |
 | --- | --- |
 | Persist saved sets in a durable cloud database, including names, source text, stable segments, selected passages, preferences, vocabulary and familiar flags | V2 |
-| Retain PDF originals in private object storage and associate them with saved sets | V2 |
+| Optionally retain PDF originals in private object storage and associate them with saved sets | Optional V2 proposal |
 | List and reopen saved sets after backend restarts or redeployments without re-extraction or regeneration | V2 |
-| Provide authorized open/download access to saved PDF originals | V2 |
+| Provide authorized open/download access if PDF retention is adopted | Optional V2 proposal |
 | Preserve original text, stable segment IDs and PDF page references through storage and retrieval | V2 |
 | Allow deletion of sets and associated PDF originals under a documented retention policy | V2 |
 | Handle database/storage failures and quotas honestly; recover from partial saves and clean up orphaned uploads | V2 |
@@ -209,7 +209,7 @@ These are not required for either V1 or V2.
 
 - Video or audio upload and transcription
 - Netflix integration
-- Full-book processing
+- Unbounded full-book processing (bounded larger-book/page-range support is under investigation)
 - Scanned-PDF OCR
 - Multi-language support beyond Arabic
 - User accounts and authentication as a standalone product feature (V2 library ownership/access must still be designed)
@@ -225,7 +225,7 @@ YouTube integration remains an open question rather than a planned requirement.
 
 ### V1: Working Prototype
 
-A learner can paste Arabic text or upload a PDF, select a passage, set their proficiency and Arabic variety, generate grounded vocabulary items (automatic 10-15 total, or a chosen target per passage), mark familiar expressions, and complete an interactive flashcard review.
+A learner can paste Arabic text or upload a PDF, select a passage, choose vocabulary categories and Arabic variety, generate grounded vocabulary items (automatic 10-15 total, or a chosen target per passage), mark familiar expressions, and complete an interactive flashcard review.
 
 All major controls work, the interface is polished, and the entire application runs locally without an account or database.
 
@@ -235,9 +235,9 @@ A learner can prepare vocabulary from pasted text, PDF documents, or uploaded mo
 
 The system has improved vocabulary accuracy, meaningful automated test coverage, stakeholder feedback, and documented experimental evaluation.
 
-Saved sets, source/page references, preferences, vocabulary and familiar flags survive backend restarts/redeployments in durable cloud storage. Learners can reopen their sets, access authorized PDF originals, and delete sets and associated files. Library ownership and recovery limitations are documented and tested.
+Browser-saved sets already survive backend restarts without a cloud database. The earlier V2 durable saved-set scope remains recorded; PDF retention and original-PDF access are optional proposals pending a demonstrated need and ownership/retention design. This review establishes no new cloud prerequisite.
 
-Recommended scope boundary: V1 delivers the learning experience including PDF extraction without cloud storage prerequisites. V2 extends media types, adds durable saved sets/PDF originals, and provides evidence that the application helps learners prepare more efficiently.
+Recommended scope boundary: V1 delivers the learning experience including PDF extraction without cloud storage prerequisites. V2 extends media types, retains the earlier durable saved-set scope, and collects evidence that the application helps learners prepare more efficiently.
 
 
 ## Requested usability refinements (2026-10-29)
@@ -249,3 +249,19 @@ V1: clear PDF browse/drag/drop/replace/remove controls; English and Arabic expla
 
 
 **Count selector refinement (2026-10-30):** Present a short list of presets plus a custom whole-number option, with total-card feedback and validation under the existing limits.
+
+
+## October 30 stakeholder review - requested changes
+
+Khanh Tran considered the MVP usable and promising and valued relevant vocabulary, passage selection and exclusion of familiar words. This supports usefulness to one stakeholder; it does not establish improved learning outcomes. These requests are targets, with actual implementation/verification in the progress log.
+
+- Replace vague proficiency choices with category selection; nouns, verbs and adjectives are the starting selection, with prepositions and roots optional. Prefer separate words over combined phrases.
+- Show sentence-level flashcard context, with about four words on either side for very long sentences. Group practice by passage and pause between batches of at most ten cards.
+- Investigate larger files and longer books without removing resource bounds; see [larger-book investigation](larger-books.md). Full-book processing remains unimplemented; this investigation supersedes the previous blanket exclusion as a future design question.
+- Frutiger Aero (Vista/Windows 7 glass, blue/green) was confirmed by the user on November 16 before redesign. Remove generic greetings/taglines. Dragon imagery is a flexible branding direction, not a finalized identity.
+- Clearly describe browser-saved text, settings, cards and familiar flags, refresh/closing persistence, transient drafts/practice position and site-data deletion. Cloud PDF retention is not a firm stakeholder requirement; no cloud prerequisite is added.
+
+Later ideas: subtitle-file movie preparation; essential versus nice-to-have ranking; optional roots, verb forms and brief conjugation notes; rare-word collections and gamification. Automatic subtitle discovery was not established by this review. Existing conditional retrieval ideas remain conditional; no later idea is reported as implemented or moved out of incomplete V1 scope.
+
+
+**November 16 visual refinement:** Use the supplied hill/sky wallpaper and bottom-left reference with rectangular panels/controls, retaining readable Arabic and responsive layouts. The Library sidebar uses All sets and Starred rather than duplicate Home/Saved sets destinations. Star/unstar saved sets in this browser, preserve stars through regeneration and retain existing sets and failure handling. This authorized local-library refinement adds no cloud prerequisite and does not change incomplete release requirements.

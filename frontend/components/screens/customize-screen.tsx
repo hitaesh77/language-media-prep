@@ -1,5 +1,6 @@
+import { CATEGORIES, DEFAULT_CATEGORIES } from "../../lib/api/types";
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, Globe, Briefcase, Layers } from "lucide-react";
+import { ArrowLeft, ArrowRight, Globe, Layers } from "lucide-react";
 import type { Preferences } from "../../lib/api/types";
 import { Title, Choice } from "../flow-controls";
 
@@ -20,6 +21,7 @@ export function CustomizeScreen({
   onBack,
   onGenerate,
 }: CustomizeScreenProps) {
+  const categories = preferences.categories ?? DEFAULT_CATEGORIES;
   const presets = [3, 5, 10];
   const [custom, setCustom] = useState(
     preferences.cardsPerPassage !== undefined &&
@@ -33,16 +35,33 @@ export function CustomizeScreen({
     <>
       <Title
         title="Customize your set"
-        subtitle="Tell us a bit about your goals so we can find useful words and phrases for you."
+        subtitle="Choose vocabulary categories, Arabic variety, and explanation language."
       />
       <div className="preferences">
-        <Choice
-          icon={<Briefcase size={21} />}
-          title="Your level"
-          values={["Beginner", "Intermediate", "Advanced"]}
-          value={preferences.level}
-          onChange={(level) => onChange({ ...preferences, level })}
-        />
+        <fieldset>
+          <legend>Vocabulary categories</legend>
+          {CATEGORIES.map((category) => (
+            <label key={category} style={{ display: "inline-flex", gap: 8, margin: 10 }}>
+              <input
+                type="checkbox"
+                checked={categories.includes(category)}
+                onChange={(e) =>
+                  onChange({
+                    ...preferences,
+                    categories: e.target.checked
+                      ? [...categories, category]
+                      : categories.filter((c) => c !== category),
+                  })
+                }
+              />
+              {category.charAt(0).toUpperCase() + category.slice(1)}
+            </label>
+          ))}
+          <p className="notice">
+            Select at least one. Individual source words are kept separate. Roots and
+            prepositions are optional. AI category and root suggestions need review.
+          </p>
+        </fieldset>
         <Choice
           icon={<Globe size={21} />}
           title="Arabic variety"
@@ -134,7 +153,11 @@ export function CustomizeScreen({
         <button
           className="primary"
           onClick={onGenerate}
-          disabled={!["English", "Arabic"].includes(preferences.language) || invalidCount}
+          disabled={
+            !["English", "Arabic"].includes(preferences.language) ||
+            invalidCount ||
+            !categories.length
+          }
         >
           {isRegenerating ? "Regenerate vocabulary" : "Generate vocabulary"}
           <ArrowRight size={17} />

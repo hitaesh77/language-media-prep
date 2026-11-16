@@ -6,9 +6,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Lingo",
   applicationName: "Lingo",
-  description: "A little preparation. A more immersive read.",
+  description: "Arabic vocabulary preparation and practice.",
   icons: {
-    icon: { url: "/lingo-favicon.png", type: "image/png", sizes: "512x512" },
+    icon: { url: "/lingo-favicon.png?v=2", type: "image/png", sizes: "512x512" },
   },
 };
 export default function Layout({ children }: { children: React.ReactNode }) {

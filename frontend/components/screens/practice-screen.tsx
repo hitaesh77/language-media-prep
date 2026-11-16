@@ -1,9 +1,11 @@
+import { shortContext } from "../../lib/practice";
 import { ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
 import type { Vocabulary } from "../../lib/api/types";
 
 type PracticeScreenProps = {
   card: Vocabulary;
   passageLabel: string;
+  batchLabel: string;
   index: number;
   total: number;
   reviewedCount: number;
@@ -17,6 +19,7 @@ type PracticeScreenProps = {
 export function PracticeScreen({
   card,
   passageLabel,
+  batchLabel,
   index,
   total,
   reviewedCount,
@@ -36,7 +39,9 @@ export function PracticeScreen({
           <i style={{ width: `${(reviewedCount / total) * 100}%` }} />
         </div>
       </div>
-      <p className="practice-source">{passageLabel}</p>
+      <p className="practice-source">
+        {passageLabel} - {batchLabel}
+      </p>
       <div className="flash-stage">
         <button
           className="round"
@@ -63,7 +68,7 @@ export function PracticeScreen({
                 {card.meaning}
               </span>
               <span className="card-source" lang="ar" dir="rtl">
-                {card.context}
+                {shortContext(card.context, card.expression)}
               </span>
             </>
           ) : (

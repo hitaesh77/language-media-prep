@@ -162,3 +162,15 @@ def test_model_cannot_override_bound_expression_or_source(upstream):
     }
     upstream["body"]["choices"][0]["message"]["content"] = json.dumps(content)
     assert client.post("/api/generate", json=request_body()).status_code == 502
+
+
+def test_categories_offer_only_individual_source_words(upstream):
+    assert (
+        client.post(
+            "/api/generate", json=request_body(categories=["nouns", "verbs"])
+        ).status_code
+        == 200
+    )
+    data = json.loads(upstream["calls"][0]["messages"][1]["content"])
+    assert all(len(c["expression"].split()) == 1 for c in data["source_candidates"])
+    assert data["settings"]["categories"] == ["nouns", "verbs"]

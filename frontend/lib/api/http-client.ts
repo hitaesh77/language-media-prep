@@ -1,3 +1,4 @@
+import { CATEGORIES } from "./types";
 import {
   invalid,
   metadata,
@@ -114,6 +115,15 @@ export function createHttpClient(options: Options = {}): PrepClient {
     async getSet(id) {
       return find(id);
     },
+    async updateStarred(id, starred) {
+      if (typeof starred !== "boolean") throw Error("Choose a valid star status.");
+      const sets = library.read();
+      const set = sets.find((s) => s.id === id);
+      if (!set) throw Error("Set not found.");
+      const updated = { ...set, starred };
+      library.write(sets.map((s) => (s.id === id ? updated : s)));
+      return updated;
+    },
     async updateFamiliar(id, itemIds) {
       const sets = library.read(),
         set = sets.find((s) => s.id === id);
@@ -156,7 +166,16 @@ export function createHttpClient(options: Options = {}): PrepClient {
     async generateVocabulary(request: GenerateRequest) {
       validText(request.text);
       const name = request.name.trim();
-      const { level, variety, language } = request.preferences;
+      const { level, variety, language, categories } = request.preferences;
+      if (
+        categories !== undefined &&
+        (!Array.isArray(categories) ||
+          !categories.length ||
+          categories.length > 5 ||
+          new Set(categories).size !== categories.length ||
+          categories.some((c) => !CATEGORIES.includes(c)))
+      )
+        throw Error("Choose at least one supported vocabulary category.");
       if (
         !Object.hasOwn(levels, level) ||
         !Object.hasOwn(varieties, variety) ||
@@ -213,6 +232,7 @@ export function createHttpClient(options: Options = {}): PrepClient {
             text: request.text,
             segment_ids: selected,
             proficiency: levels[level],
+            ...(categories ? { categories } : {}),
             variety: varieties[variety],
             explanation_language: language,
             mode: "llm",
@@ -236,6 +256,7 @@ export function createHttpClient(options: Options = {}): PrepClient {
           !selected.includes(sourceId) ||
           context !== source.text ||
           !source.text.includes(expression) ||
+          (categories !== undefined && expression.trim().split(/\s+/u).length !== 1) ||
           seen.has(JSON.stringify([sourceId, expression]))
         )
           return invalid();
@@ -263,12 +284,14 @@ export function createHttpClient(options: Options = {}): PrepClient {
         selected,
         preferences: {
           level,
+          ...(categories ? { categories } : {}),
           variety,
           language,
           ...(count !== undefined ? { cardsPerPassage: count } : {}),
         },
         vocabulary,
         createdAt: previous?.createdAt ?? new Date().toISOString(),
+        ...(previous?.starred !== undefined ? { starred: previous.starred } : {}),
         generation,
         ...(pages ? { pages } : {}),
       };

@@ -1,4 +1,6 @@
 "use client";
+import { practiceBatches } from "../lib/practice";
+import { DEFAULT_CATEGORIES } from "../lib/api/types";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type SavedSet, type Segment, type Preferences } from "../lib/api/client";
@@ -18,6 +20,7 @@ import { CompletionScreen } from "./screens/completion-screen";
 // Provisional starting preferences for a new set.
 const defaults: Preferences = {
   level: "Intermediate",
+  categories: DEFAULT_CATEGORIES,
   variety: "Modern Standard Arabic (MSA)",
   language: "English",
 };
@@ -47,6 +50,8 @@ export default function PrepApp() {
 
   // Practice uses a snapshot of unfamiliar cards for the current session.
   const [queue, setQueue] = useState<SavedSet["vocabulary"]>([]);
+  const [batches, setBatches] = useState<SavedSet["vocabulary"][]>([]);
+  const [batch, setBatch] = useState(0);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [reviewed, setReviewed] = useState<string[]>([]);
@@ -97,6 +102,17 @@ export default function PrepApp() {
     }
   }
 
+  async function updateStarred(id: string, starred: boolean) {
+    try {
+      const updated = await api.updateStarred(id, starred);
+      setSets(await api.listSets());
+      if (active?.id === id) setActive(updated);
+    } catch (e) {
+      showError(e);
+      throw e;
+    }
+  }
+
   function startNewSet() {
     setActive(null);
     setName("");
@@ -119,7 +135,10 @@ export default function PrepApp() {
     setPages(set.pages);
     setFile(undefined);
     setSelected(set.selected);
-    setPrefs(set.preferences);
+    setPrefs({
+      ...set.preferences,
+      categories: set.preferences.categories ?? DEFAULT_CATEGORIES,
+    });
     setFilter("All");
     navigateTo("vocabulary");
   }
@@ -191,7 +210,11 @@ export default function PrepApp() {
 
   function startPractice() {
     if (!active) return;
-    setQueue(active.vocabulary.filter((v) => !v.familiar));
+    const groups = practiceBatches(active);
+    if (!groups.length) return;
+    setBatches(groups);
+    setBatch(0);
+    setQueue(groups[0]);
     setIndex(0);
     setFlipped(false);
     setReviewed([]);
@@ -259,6 +282,7 @@ export default function PrepApp() {
           onCreateSet={startNewSet}
           onOpenSet={openSet}
           onDeleteSet={deleteSet}
+          onStarSet={updateStarred}
         />
       )}
 
@@ -323,6 +347,7 @@ export default function PrepApp() {
         <PracticeScreen
           card={currentCard}
           passageLabel={`Passage ${(active?.segments.findIndex((s) => s.id === currentCard.sourceId) ?? -1) + 1}${active?.pages?.find((p) => p.segmentIds.includes(currentCard.sourceId)) ? ` - Page ${active.pages.find((p) => p.segmentIds.includes(currentCard.sourceId))!.page}` : ""}`}
+          batchLabel={`Batch ${batch + 1} of ${batches.length} - up to 10 cards from one passage`}
           index={index}
           total={queue.length}
           reviewedCount={reviewed.length}
@@ -344,6 +369,19 @@ export default function PrepApp() {
           total={queue.length}
           familiarCount={familiarCount}
           unfamiliarCount={unfamiliar.length}
+          batchLabel={`Batch ${batch + 1} of ${batches.length} complete`}
+          onNextBatch={
+            batch + 1 < batches.length
+              ? () => {
+                  setBatch(batch + 1);
+                  setQueue(batches[batch + 1]);
+                  setIndex(0);
+                  setFlipped(false);
+                  setReviewed([]);
+                  navigateTo("practice");
+                }
+              : undefined
+          }
           onReviewAgain={startPractice}
           onBackToSet={() => navigateTo("vocabulary")}
           onHome={returnHome}
