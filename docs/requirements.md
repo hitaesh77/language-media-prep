@@ -161,7 +161,7 @@ Postgres (candidate: Neon) and private object storage (candidate: Vercel Blob) a
 
 Accounts are not automatically added by this scope change. Library identification, recovery and isolation remain design decisions; cross-device access is not promised until these are defined. Document browser-data migration or export behavior before switching storage. Flashcard position remains session-only. An embedded PDF viewer is optional; open/download is sufficient.
 
-**Approved PDF limit:** 4 MiB (`4 * 1024 * 1024` bytes), with bounded multipart overhead for Vercel. Backend and frontend HTTP validation enforce this limit; the frontend now uploads actual PDF bytes. Permanent PDF retention is V2, while real PDF extraction remains V1.
+**Backend PDF chunk limit:** 4 MiB (`4 * 1024 * 1024` bytes), with bounded multipart overhead for Vercel. The browser accepts original files up to 50 MiB and uploads bounded page chunks. Permanent PDF retention is V2, while real PDF extraction remains V1.
 
 ### 8. Testing and Validation
 
@@ -265,3 +265,6 @@ Later ideas: subtitle-file movie preparation; essential versus nice-to-have rank
 
 
 **November 16 visual refinement:** Use the supplied hill/sky wallpaper and bottom-left reference with rectangular panels/controls, retaining readable Arabic and responsive layouts. The Library sidebar uses All sets and Starred rather than duplicate Home/Saved sets destinations. Star/unstar saved sets in this browser, preserve stars through regeneration and retain existing sets and failure handling. This authorized local-library refinement adds no cloud prerequisite and does not change incomplete release requirements.
+
+
+**Book upload update (November 17):** The browser accepts original PDFs up to 50 MiB and extracts a selected range of at most 20 pages in size-bounded parallel chunks. The combined 20,000-character source limit remains. Real-book support and resource use require validation; see [larger-books.md](larger-books.md).

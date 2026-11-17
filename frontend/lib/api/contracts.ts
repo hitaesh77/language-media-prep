@@ -43,8 +43,17 @@ export function readPages(
   if (!Array.isArray(value) || value.length < 1 || value.length > 20) return invalid();
   const pages = value.map((v, i) => {
     const p = object(v);
-    if (p.page !== i + 1 || !Array.isArray(p.segmentIds)) return invalid();
-    return { page: i + 1, segmentIds: p.segmentIds.map((id) => string(id, 128)) };
+    if (
+      !Number.isSafeInteger(p.page) ||
+      (p.page as number) < 1 ||
+      (i > 0 && p.page !== (object(value[i - 1]).page as number) + 1) ||
+      !Array.isArray(p.segmentIds)
+    )
+      return invalid();
+    return {
+      page: p.page as number,
+      segmentIds: p.segmentIds.map((id) => string(id, 128)),
+    };
   });
   if (
     JSON.stringify(pages.flatMap((p) => p.segmentIds)) !==

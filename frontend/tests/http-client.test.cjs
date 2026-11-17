@@ -155,12 +155,20 @@ test("PDF bytes are sent as multipart and provenance survives saving", async () 
   const { api, state, calls } = setup();
   const pages = [{ page: 1, segmentIds: segments.map((s) => s.id) }];
   state.generation = () => response({ text: TEXT, segments, pages });
-  const file = new File(["%PDF-test"], "source.pdf", { type: "application/pdf" });
+  const { PDFDocument } = require("pdf-lib");
+  const pdf = await PDFDocument.create();
+  pdf.addPage();
+  const file = new File([await pdf.save()], "source.pdf", { type: "application/pdf" });
   const source = await api.processContent("ignored", file);
   assert.deepEqual(source, { text: TEXT, segments, pages });
   assert.equal(calls[0].url, "http://backend.invalid/api/pdf/extract");
   assert.ok(calls[0].body instanceof FormData);
-  assert.equal(await calls[0].body.get("file").text(), "%PDF-test");
+  assert.equal(
+    (
+      await PDFDocument.load(await calls[0].body.get("file").arrayBuffer())
+    ).getPageCount(),
+    1,
+  );
   assert.equal(calls[0].headers?.["Content-Type"], undefined);
   state.generation = () => response(output());
   const set = await api.generateVocabulary({ ...request(), type: "PDF", pages });
@@ -173,11 +181,11 @@ test("invalid files/preferences/selections fail before paid generation", async (
   await assert.rejects(
     api.processContent(
       "",
-      new File([new Uint8Array(4 * 1024 * 1024 + 1)], "big.pdf", {
+      new File([new Uint8Array(50 * 1024 * 1024 + 1)], "big.pdf", {
         type: "application/pdf",
       }),
     ),
-    /4 MiB/,
+    /50 MiB/,
   );
   await assert.rejects(
     api.generateVocabulary({
@@ -492,4 +500,55 @@ test("invalid saved star values are rejected without overwriting the library", a
   saved.set("sahih-sets-v1", raw);
   await assert.rejects(api.listSets(), /could not be read/i);
   assert.equal(saved.get("sahih-sets-v1"), raw);
+});
+
+test("book page ranges merge in order with canonical IDs and preserve repeated passages", async () => {
+  const { PDFDocument } = require("pdf-lib");
+  const { File } = require("node:buffer");
+  const pdf = await PDFDocument.create();
+  for (let i = 0; i < 15; i++) pdf.addPage();
+  const file = new File([await pdf.save()], "book.pdf", { type: "application/pdf" });
+  let active = 0,
+    maxActive = 0,
+    calls = 0;
+  const api = createHttpClient({
+    fetch: async (url, init) => {
+      if (url.endsWith("/api/segments")) {
+        const text = JSON.parse(init.body).text;
+        return response(
+          text.split("\n\n").map((text, i) => ({ id: `combined:${i}`, text })),
+        );
+      }
+      active++;
+      maxActive = Math.max(maxActive, active);
+      calls++;
+      const part = await PDFDocument.load(await init.body.get("file").arrayBuffer());
+      const count = part.getPageCount();
+      await new Promise((resolve) => setTimeout(resolve, count === 10 ? 15 : 1));
+      active--;
+      const segments = Array.from({ length: count }, (_, i) => ({
+        id: `local:${i}`,
+        text: "كلمة عربية",
+      }));
+      return response({
+        text: segments.map((s) => s.text).join("\n\n"),
+        segments,
+        pages: segments.map((s, i) => ({ page: i + 1, segmentIds: [s.id] })),
+      });
+    },
+  });
+  const result = await api.processContent("", file, { start: 3, end: 13 });
+  assert.equal(calls, 2);
+  assert.equal(maxActive, 2);
+  assert.equal(result.segments.length, 11);
+  assert.deepEqual(
+    result.pages.map((p) => p.page),
+    Array.from({ length: 11 }, (_, i) => i + 3),
+  );
+  assert.deepEqual(
+    result.pages.flatMap((p) => p.segmentIds),
+    result.segments.map((s) => s.id),
+  );
+  assert.equal(new Set(result.segments.map((s) => s.id)).size, 11);
+  await assert.rejects(api.processContent("", file, { start: 5, end: 30 }), /range/i);
 });

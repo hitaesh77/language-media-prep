@@ -58,7 +58,11 @@ export type GenerateRequest = Omit<
 };
 export interface PrepClient {
   listSets(): Promise<SavedSet[]>;
-  processContent(text: string, file?: File): Promise<SourceContent>;
+  processContent(
+    text: string,
+    file?: File,
+    range?: { start: number; end?: number },
+  ): Promise<SourceContent>;
   generateVocabulary(request: GenerateRequest): Promise<SavedSet>;
   updateFamiliar(id: string, itemIds: string[]): Promise<SavedSet>;
   getSet(id: string): Promise<SavedSet>;

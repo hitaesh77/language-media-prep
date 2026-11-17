@@ -32,6 +32,7 @@ const varieties: Record<string, string> = {
 export function createHttpClient(options: Options = {}): PrepClient {
   const library = new Library(options.storage);
   const pending = new Set<AbortController>();
+  let cancelled = 0;
   const base = (
     options.baseUrl ??
     process.env.NEXT_PUBLIC_API_URL ??
@@ -60,7 +61,7 @@ export function createHttpClient(options: Options = {}): PrepClient {
       if (!response.ok) {
         if (response.status === 413)
           throw Error(
-            "Content is too large. Choose a PDF up to 4 MiB or a shorter passage.",
+            "A PDF chunk is too large or the text is too long. Choose fewer pages.",
           );
         const detail =
           data && typeof data === "object" && "detail" in data ? data.detail : undefined;
@@ -103,6 +104,7 @@ export function createHttpClient(options: Options = {}): PrepClient {
   };
   return {
     cancelPending() {
+      cancelled++;
       for (const controller of pending) controller.abort("navigation");
     },
     async deleteSet(id) {
@@ -140,7 +142,7 @@ export function createHttpClient(options: Options = {}): PrepClient {
       library.write(sets.map((s) => (s.id === id ? updated : s)));
       return updated;
     },
-    async processContent(text, file): Promise<SourceContent> {
+    async processContent(text, file, range): Promise<SourceContent> {
       if (file) {
         if (
           !file.name.toLowerCase().endsWith(".pdf") ||
@@ -148,16 +150,104 @@ export function createHttpClient(options: Options = {}): PrepClient {
             !["application/pdf", "application/octet-stream"].includes(file.type))
         )
           throw Error("Choose a PDF file.");
-        if (!file.size || file.size > 4 * 1024 * 1024)
-          throw Error("Choose a nonempty PDF no larger than 4 MiB.");
-        const form = new FormData();
-        form.append("file", file);
-        const data = object(await post("/api/pdf/extract", form));
-        text = string(data.text);
+        if (!file.size || file.size > 50 * 1024 * 1024)
+          throw Error("Choose a nonempty PDF no larger than 50 MiB.");
+        const operation = cancelled;
+        const check = () => {
+          if (operation !== cancelled) throw Error("Request cancelled.");
+        };
+        const { PDFDocument } = await import("pdf-lib");
+        let pdf: import("pdf-lib").PDFDocument;
+        try {
+          pdf = await PDFDocument.load(await file.arrayBuffer());
+        } catch {
+          throw Error("Cannot open this PDF. Choose a valid, unencrypted PDF.");
+        }
+        check();
+        const start = range?.start ?? 1;
+        const end = range?.end ?? Math.min(start + 19, pdf.getPageCount());
+        if (
+          !Number.isSafeInteger(start) ||
+          !Number.isSafeInteger(end) ||
+          start < 1 ||
+          end < start ||
+          end > pdf.getPageCount() ||
+          end - start >= 20
+        )
+          throw Error("Choose a valid range of at most 20 pages in this PDF.");
+        const chunks: { first: number; count: number; bytes: Uint8Array }[] = [];
+        async function split(first: number, count: number): Promise<void> {
+          check();
+          const part = await PDFDocument.create();
+          const pages = await part.copyPages(
+            pdf,
+            Array.from({ length: count }, (_, i) => first - 1 + i),
+          );
+          pages.forEach((page) => part.addPage(page));
+          const bytes = await part.save();
+          check();
+          if (bytes.length > 4 * 1024 * 1024) {
+            if (count === 1)
+              throw Error(`Page ${first} exceeds the 4 MiB extraction limit.`);
+            const half = Math.floor(count / 2);
+            await split(first, half);
+            await split(first + half, count - half);
+          } else chunks.push({ first, count, bytes });
+        }
+        // Split into at least two requests when possible, with bounded parallelism.
+        for (let first = start; first <= end; first += 10)
+          await split(first, Math.min(10, end - first + 1));
+        const results: {
+          text: string;
+          segments: { id: string; text: string }[];
+          pages: NonNullable<SourceContent["pages"]>;
+        }[] = [];
+        try {
+          for (let i = 0; i < chunks.length; i += 2) {
+            const batch = await Promise.all(
+              chunks.slice(i, i + 2).map(async (chunk) => {
+                check();
+                const form = new FormData();
+                form.append(
+                  "file",
+                  new Blob([new Uint8Array(chunk.bytes)], { type: "application/pdf" }),
+                  "pages.pdf",
+                );
+                const data = object(await post("/api/pdf/extract", form));
+                const text = string(data.text);
+                validText(text);
+                const segments = readSegments(data.segments, text),
+                  pages = readPages(data.pages, segments);
+                if (!pages || pages.length !== chunk.count) return invalid();
+                return { text, segments, pages };
+              }),
+            );
+            results.push(...batch);
+          }
+        } catch (error) {
+          for (const controller of pending) controller.abort("navigation");
+          throw error;
+        }
+        check();
+        text = results.map((r) => r.text).join("\n\n");
+        if ([...text].length > 20000)
+          throw Error("Extracted text exceeds 20,000 characters. Choose fewer pages.");
         validText(text);
-        const segments = readSegments(data.segments, text),
-          pages = readPages(data.pages, segments);
-        if (!pages) return invalid();
+        const segments = await parse(text);
+        check();
+        const original = results.flatMap((r) => r.segments);
+        if (
+          original.length !== segments.length ||
+          original.some((s, i) => s.text !== segments[i].text)
+        )
+          return invalid();
+        let index = 0;
+        const pages = results.flatMap((r, i) =>
+          r.pages.map((page) => ({
+            page: chunks[i].first + page.page - 1,
+            segmentIds: page.segmentIds.map(() => segments[index++].id),
+          })),
+        );
         return { text, segments, pages };
       }
       validText(text);

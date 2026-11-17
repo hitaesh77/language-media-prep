@@ -9,6 +9,10 @@ type ContentScreenProps = {
   text: string;
   mode: SavedSet["type"];
   file?: File;
+  pageStart: number;
+  pageEnd?: number;
+  onPageStart: (value: number) => void;
+  onPageEnd: (value: number | undefined) => void;
   busy: boolean;
   onNameChange: (name: string) => void;
   onTextChange: (text: string) => void;
@@ -24,6 +28,10 @@ export function ContentScreen({
   text,
   mode,
   file,
+  pageStart,
+  pageEnd,
+  onPageStart,
+  onPageEnd,
   busy,
   onNameChange,
   onTextChange,
@@ -49,8 +57,8 @@ export function ContentScreen({
       setFileError("Choose one PDF file.");
       return;
     }
-    if (!candidate.size || candidate.size > 4 * 1024 * 1024) {
-      setFileError("Choose a nonempty PDF no larger than 4 MiB.");
+    if (!candidate.size || candidate.size > 50 * 1024 * 1024) {
+      setFileError("Choose a nonempty PDF no larger than 50 MiB.");
       return;
     }
     setFileError("");
@@ -60,7 +68,7 @@ export function ContentScreen({
     <>
       <Title
         title="Add your content"
-        subtitle="Paste Arabic text or upload a short text-based PDF."
+        subtitle="Paste Arabic text or upload a text-based PDF."
       />
       <SourceNameInput name={name} onChange={onNameChange} disabled={busy} />
       <>
@@ -159,7 +167,7 @@ export function ContentScreen({
               <span className="upload-browse">
                 {file ? "Choose another PDF" : "Browse files"}
               </span>
-              <small>Text-based Arabic PDF - up to 4 MiB</small>
+              <small>Text-based Arabic PDF - up to 50 MiB</small>
             </button>
             {file && (
               <div className="upload-selection" role="status">
@@ -180,15 +188,46 @@ export function ContentScreen({
                 </button>
               </div>
             )}
+            {file && (
+              <div>
+                <label>
+                  From page{" "}
+                  <input
+                    aria-label="From page"
+                    type="number"
+                    min="1"
+                    value={pageStart}
+                    disabled={busy}
+                    onChange={(e) => onPageStart(Number(e.target.value))}
+                  />
+                </label>
+                <label>
+                  {" "}
+                  To page{" "}
+                  <input
+                    aria-label="To page"
+                    type="number"
+                    min="1"
+                    value={pageEnd ?? ""}
+                    placeholder="Up to 20 pages"
+                    disabled={busy}
+                    onChange={(e) =>
+                      onPageEnd(e.target.value ? Number(e.target.value) : undefined)
+                    }
+                  />
+                </label>
+                <p>Select up to 20 pages and 20,000 extracted characters at a time.</p>
+              </div>
+            )}
             {fileError && (
               <p className="error" role="alert">
                 {fileError}
               </p>
             )}
             <p className="notice">
-              Your PDF is sent to the server for text extraction and then discarded.
-              Review the extracted Arabic before continuing. Scans, images and some font
-              encodings are unsupported.
+              Selected pages are sent to the server for text extraction and then
+              discarded. Review the extracted Arabic before continuing. Scans, images and
+              some font encodings are unsupported.
             </p>
           </div>
         )}

@@ -104,3 +104,8 @@ Each passage preserves exact original text and IDs. Repeated expressions from di
 
 
 **Simplified count selector (2026-10-30):** Customize offers Automatic, 3, 5 or 10 cards per passage, plus Custom with a validated whole-number input. The current calculated total is shown separately. Existing saved targets outside the presets open in Custom; numeric/API limits remain 1-15 per passage and 300 total. Presets exceeding the current passage budget are disabled.
+
+
+## Book page-range extraction (November 17)
+
+The browser accepts PDFs up to 50 MiB, copies a selected contiguous range of at most 20 pages into valid sub-PDFs no larger than 4 MiB each, and submits at most two at a time. It validates each response, merges in page order, reparses the combined source for canonical IDs, and maps original page numbers. The combined source remains capped at 20,000 code points. A chunk without usable Arabic or a single page over 4 MiB fails; partial results are not saved. Original PDFs are not stored. Representative large-book fidelity and memory use remain unverified.

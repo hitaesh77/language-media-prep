@@ -37,6 +37,8 @@ export default function PrepApp() {
   const [text, setText] = useState("");
   const [mode, setMode] = useState<"Pasted text" | "PDF">("Pasted text");
   const [file, setFile] = useState<File>();
+  const [pageStart, setPageStart] = useState(1);
+  const [pageEnd, setPageEnd] = useState<number>();
   const [segments, setSegments] = useState<Segment[]>([]);
   const [pages, setPages] = useState<PageReference[]>();
   const [selected, setSelected] = useState<string[]>([]);
@@ -148,7 +150,10 @@ export default function PrepApp() {
     setBusy(true);
     setError("");
     try {
-      const result = await api.processContent(text, mode === "PDF" ? file : undefined);
+      const result = await api.processContent(text, mode === "PDF" ? file : undefined, {
+        start: pageStart,
+        end: pageEnd,
+      });
       if (run !== operation.current) return;
       setText(result.text);
       setSegments(result.segments);
@@ -292,6 +297,10 @@ export default function PrepApp() {
           text={text}
           mode={mode}
           file={file}
+          pageStart={pageStart}
+          pageEnd={pageEnd}
+          onPageStart={setPageStart}
+          onPageEnd={setPageEnd}
           busy={busy}
           onNameChange={setName}
           onTextChange={setText}

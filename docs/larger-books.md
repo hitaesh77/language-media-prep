@@ -1,5 +1,10 @@
 # Larger-book investigation - November 16, 2026
 
+## Implementation update - November 17, 2026
+
+The browser accepts original PDFs up to 50 MiB and selects a contiguous range of at most 20 pages. It copies valid sub-PDFs, splitting further if necessary to stay within 4 MiB per request, and runs at most two extraction requests concurrently. Results are validated, merged in original page order and reparsed to obtain canonical IDs. Repeated passages are preserved; failed chunks fail the whole operation. A single page larger than 4 MiB is rejected. The combined 20,000-character source limit remains; select a shorter range if exceeded. Chunks without usable Arabic are rejected by the existing backend. Original PDFs are not retained. Real 50 MiB books, memory use, Arabic font fidelity and hosted behavior have not been benchmarked. The sections below describe the previous investigation.
+
+
 Khanh Tran's October 30 review reported that a roughly 18 MB book was blocked. This is a requested capability investigation, not evidence of successful full-book processing.
 
 ## Current independent limits
