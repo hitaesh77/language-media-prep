@@ -1,4 +1,10 @@
 export type Segment = { id: string; text: string };
+export type SubtitleReference = {
+  sourceId: string;
+  cueId: string;
+  startMs: number;
+  endMs: number;
+};
 export type PageReference = { page: number; segmentIds: string[] };
 export type SourceContent = {
   text: string;
@@ -47,6 +53,7 @@ export type SavedSet = {
   vocabulary: Vocabulary[];
   createdAt: string;
   starred?: boolean;
+  subtitles?: SubtitleReference[];
   pages?: PageReference[];
   generation?: GenerationMetadata;
 };

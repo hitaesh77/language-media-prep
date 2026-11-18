@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ArrowRight, FileText, Upload } from "lucide-react";
+import { ArrowRight, FileText, Film, Upload } from "lucide-react";
 import type { SavedSet } from "../../lib/api/types";
 import { SAMPLE } from "../../lib/sample";
 import { Title, SourceNameInput } from "../flow-controls";
@@ -20,6 +20,7 @@ type ContentScreenProps = {
   onFileChange: (file: File | undefined) => void;
   onClearError: () => void;
   onHome: () => void;
+  onMovie: () => void;
   onProcess: () => void;
 };
 
@@ -39,6 +40,7 @@ export function ContentScreen({
   onFileChange,
   onClearError,
   onHome,
+  onMovie,
   onProcess,
 }: ContentScreenProps) {
   const input = useRef<HTMLInputElement>(null);
@@ -68,9 +70,8 @@ export function ContentScreen({
     <>
       <Title
         title="Add your content"
-        subtitle="Paste Arabic text or upload a text-based PDF."
+        subtitle="Choose how to add your Arabic content."
       />
-      <SourceNameInput name={name} onChange={onNameChange} disabled={busy} />
       <>
         <div className="tabs">
           <button
@@ -95,7 +96,12 @@ export function ContentScreen({
             <Upload size={17} />
             Upload PDF
           </button>
+          <button type="button" disabled={busy} onClick={onMovie}>
+            <Film size={17} />
+            From movie
+          </button>
         </div>
+        <SourceNameInput name={name} onChange={onNameChange} disabled={busy} />
         {mode === "Pasted text" ? (
           <div className="text-box">
             <textarea
@@ -155,19 +161,17 @@ export function ContentScreen({
                 choose(Array.from(e.dataTransfer.files));
               }}
             >
-              <Upload size={32} aria-hidden="true" />
+              <FileText size={24} aria-hidden="true" />
               <strong>
                 {dragging
                   ? "Drop your PDF here"
                   : file
                     ? "Replace your PDF"
-                    : "Drag and drop your PDF here"}
+                    : "Drag a PDF here"}
               </strong>
-              <span>or click to browse your files</span>
               <span className="upload-browse">
                 {file ? "Choose another PDF" : "Browse files"}
               </span>
-              <small>Text-based Arabic PDF - up to 50 MiB</small>
             </button>
             {file && (
               <div className="upload-selection" role="status">
@@ -188,8 +192,9 @@ export function ContentScreen({
                 </button>
               </div>
             )}
+            <p className="upload-help">Text-based Arabic PDF, up to 50 MiB.</p>
             {file && (
-              <div>
+              <div className="pdf-range">
                 <label>
                   From page{" "}
                   <input

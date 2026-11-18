@@ -5,6 +5,7 @@ import {
   object,
   readPages,
   readSegments,
+  readSubtitles,
   string,
   validText,
 } from "./contracts";
@@ -308,6 +309,10 @@ export function createHttpClient(options: Options = {}): PrepClient {
         if (index < 0) throw Error("Select valid source passages again.");
         return segments[index].id;
       });
+      const subtitleRefs = readSubtitles(request.subtitles, old)?.map((c, i) => ({
+        ...c,
+        sourceId: segments[i].id,
+      }));
       const oldPages = readPages(request.pages, old);
       const pages = oldPages?.map((p) => ({
         ...p,
@@ -384,6 +389,7 @@ export function createHttpClient(options: Options = {}): PrepClient {
         ...(previous?.starred !== undefined ? { starred: previous.starred } : {}),
         generation,
         ...(pages ? { pages } : {}),
+        ...(subtitleRefs ? { subtitles: subtitleRefs } : {}),
       };
       const latest = library.read();
       if (

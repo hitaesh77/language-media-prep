@@ -62,6 +62,30 @@ export function readPages(
     return invalid();
   return pages;
 }
+export function readSubtitles(value: unknown, segments: Segment[]) {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length !== segments.length) return invalid();
+  return value.map((entry, i) => {
+    const c = object(entry);
+    if (
+      c.sourceId !== segments[i].id ||
+      typeof c.cueId !== "string" ||
+      !c.cueId ||
+      c.cueId.length > 128 ||
+      !Number.isSafeInteger(c.startMs) ||
+      !Number.isSafeInteger(c.endMs) ||
+      (c.startMs as number) < 0 ||
+      (c.endMs as number) <= (c.startMs as number)
+    )
+      return invalid();
+    return {
+      sourceId: segments[i].id,
+      cueId: c.cueId,
+      startMs: c.startMs as number,
+      endMs: c.endMs as number,
+    };
+  });
+}
 export function metadata(value: unknown): GenerationMetadata {
   const d = object(value);
   if (
@@ -166,6 +190,7 @@ export function readSavedSet(value: unknown): SavedSet {
   });
   if (new Set(vocabulary.map((v) => v.id)).size !== vocabulary.length) return invalid();
   const pages = readPages(s.pages, segments);
+  const subtitles = readSubtitles(s.subtitles, segments);
   let generation: GenerationMetadata | undefined;
   if (s.generation !== undefined) {
     const g = object(s.generation);
@@ -183,6 +208,7 @@ export function readSavedSet(value: unknown): SavedSet {
     createdAt: s.createdAt,
     ...(s.starred !== undefined ? { starred: s.starred as boolean } : {}),
     ...(pages ? { pages } : {}),
+    ...(subtitles ? { subtitles } : {}),
     ...(generation ? { generation } : {}),
   };
 }

@@ -10,7 +10,7 @@ type AppShellProps = {
 };
 
 export function AppShell({ screen, onHome, children }: AppShellProps) {
-  const step = ["content", "passages"].includes(screen)
+  const step = ["content", "subtitle", "passages"].includes(screen)
     ? 1
     : screen === "customize"
       ? 2

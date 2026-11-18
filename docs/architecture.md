@@ -109,3 +109,8 @@ Each passage preserves exact original text and IDs. Repeated expressions from di
 ## Book page-range extraction (November 17)
 
 The browser accepts PDFs up to 50 MiB, copies a selected contiguous range of at most 20 pages into valid sub-PDFs no larger than 4 MiB each, and submits at most two at a time. It validates each response, merges in page order, reparses the combined source for canonical IDs, and maps original page numbers. The combined source remains capped at 20,000 code points. A chunk without usable Arabic or a single page over 4 MiB fails; partial results are not saved. Original PDFs are not stored. Representative large-book fidelity and memory use remain unverified.
+
+
+## Subtitle lookup
+
+FastAPI searches OpenSubtitles for Arabic movie releases using a backend key, downloads a selected file using a provider-returned HTTPS OpenSubtitles link, and parses downloaded or user-uploaded SRT/VTT into bounded timestamped cues. Requests are spaced per process, not globally across hosted instances; no retries occur. The browser selects a time range and passes exact cue text through existing source validation and generation, storing cue IDs and timestamps with canonical source IDs. Existing limits of 20,000 characters and 100 selected passages remain. Provider responses, upload files, and model inputs are untrusted. Live provider and representative subtitle validation remain outstanding.

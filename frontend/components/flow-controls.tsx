@@ -56,10 +56,11 @@ export function SourceNameInput({
   return (
     <>
       <label className="field-label" htmlFor="set-name">
-        Source name
+        Source name (required)
       </label>
       <input
         id="set-name"
+        required
         disabled={disabled}
         maxLength={100}
         placeholder="e.g. A morning in the old city"

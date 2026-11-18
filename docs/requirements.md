@@ -268,3 +268,6 @@ Later ideas: subtitle-file movie preparation; essential versus nice-to-have rank
 
 
 **Book upload update (November 17):** The browser accepts original PDFs up to 50 MiB and extracts a selected range of at most 20 pages in size-bounded parallel chunks. The combined 20,000-character source limit remains. Real-book support and resource use require validation; see [larger-books.md](larger-books.md).
+
+
+**Movie lookup update (November 17):** OpenSubtitles title search, Arabic release selection, SRT/VTT upload fallback and timestamp-range selection are implemented for the local flow, subject to fixture-only verification and existing source limits. Live API access and Arabic subtitle coverage remain unverified.

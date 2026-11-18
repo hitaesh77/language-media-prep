@@ -3,7 +3,11 @@
 
 ## Current handoff - November 16, 2026 (supersedes historical summaries below)
 
-**November 17 book update:** PDF originals up to 50 MiB can be opened in the browser; select up to 20 pages and 20,000 extracted characters per preparation. The browser makes bounded valid sub-PDFs, sends up to two concurrently, validates and merges in page order, and remaps to canonical source IDs. A single page over 4 MiB and chunks without usable Arabic fail. Large-book benchmarks, real Arabic fidelity and hosting remain unverified. Subtitle input remains unimplemented. Earlier book plans below are historical.
+**Movie search fix:** OpenSubtitles normalized search URLs with a same-host 301 that the original client rejected. The provider now follows a bounded number of same-host HTTPS GET redirects with request pacing; a live search returned 30 results without a download. Live subtitle download remains unverified.
+
+**November 17 movie update:** OpenSubtitles search and download, SRT/VTT upload, time-range selection and saved cue timing are implemented with fixture-only tests. Live subtitle downloads, representative Arabic files, browser flow and hosted rate limits remain unverified. Provider calls are paced per process; parallel hosted instances require shared rate limiting.
+
+**November 17 book update:** PDF originals up to 50 MiB can be opened in the browser; select up to 20 pages and 20,000 extracted characters per preparation. The browser makes bounded valid sub-PDFs, sends up to two concurrently, validates and merges in page order, and remaps to canonical source IDs. A single page over 4 MiB and chunks without usable Arabic fail. Large-book benchmarks, real Arabic fidelity and hosting remain unverified. Subtitle support is described in the movie update above. Earlier book plans below are historical.
 
 **Latest branding:** Replaced the provisional vector with the supplied white dragon/Lingo PNG in both shared logo placements; replaced the ICO and PNG favicons with the supplied matching blue-dragon assets. Originals were copied without image edits; responsive sizing preserves the logo aspect ratio. Earlier provisional-brand descriptions below are historical.
 
@@ -14,7 +18,7 @@
 
 Implemented the October 30 stakeholder review refinements: persisted category controls replace proficiency UI; categorized generation offers individual source words, optional AI root notes, and rejects phrase output. Source text, full stored context, stable IDs, passage selection and familiar exclusion remain. Flashcards show sentence/excerpt context; practice pauses between passage-based batches of at most ten. User confirmed Frutiger Aero before styling changes; a provisional vector dragon accompanies the name. Generic greetings/taglines are removed. Home explains browser persistence, transient drafts/practice, site-data deletion and lack of original-PDF retention/cloud sync.
 
-Larger-book handling was investigated, not implemented. The 18 MB book still exceeds current 4 MiB/20-page/20,000-character limits. See [bounded page-range proposal and hosting findings](larger-books.md). Cloud PDF retention is an optional proposal, not a firm stakeholder requirement. Subtitle-file preparation and ranking/morphology/rare-word/gamification ideas remain later work; this review does not establish automatic discovery as a requirement. No incomplete V1 requirement has been silently moved to V2.
+Larger-book page-range handling is implemented as described above; the 18 MB book has not been tested. See [bounded page-range proposal and hosting findings](larger-books.md). Cloud PDF retention is an optional proposal, not a firm stakeholder requirement. Ranking/morphology/rare-word/gamification ideas remain later work. No incomplete V1 requirement has been silently moved to V2.
 
 Review evidence: Khanh Tran described the MVP as usable/promising and valued relevant vocabulary, passage choice and familiar filtering. This is perceived usefulness for one stakeholder, not a measured learning outcome. No live category/root/meaning accuracy or book benchmark was performed. No credentials/evidence files were read or committed.
 
@@ -24,7 +28,7 @@ Earlier review verification (before the latest visual revision): 92 backend test
 
 1. Review representative Arabic category selections, meanings and optional roots with a proficient reviewer. Record errors, real latency and reported usage; stakeholder usefulness is not evidence of learning improvement.
 2. Validate the browser-side PDF splitting flow with a representative permitted Arabic book, including memory use, page fidelity, extraction limits and hosted behavior. See [larger-book investigation](larger-books.md).
-3. Add movie/video preparation through user-supplied SRT/VTT subtitles as the next media increment: validate bounded files, preserve original Arabic, stable cue IDs and timestamps, select time ranges, then reuse vocabulary selection, familiar filtering and practice. Test malformed cues, timestamp handling, grounding and the complete subtitle-to-practice flow. This is subtitle input, not video/audio upload, transcription, OCR, playback, Netflix or YouTube integration. Automatic subtitle discovery remains a conditional feasibility idea, not a stakeholder-established requirement or prerequisite.
+3. Validate OpenSubtitles search, one selected download, Arabic subtitle quality, upload fallback and the complete subtitle-to-practice flow on a representative title. No live download has been made during implementation. Verify provider quotas and use a shared limiter before deploying multiple instances.
 4. Verify a hosted preview with the real deployment configuration and request budgets; keep model credentials on the backend. Preserve browser persistence/error handling and existing limits until replacements are tested. Earlier V2 saved-set scope remains recorded; cloud PDF storage is optional and is not needed for this prototype.
 5. Later backlog: essential versus nice-to-have ranking; optional verb forms/brief conjugation notes; refine AI root notes; exploratory rare-word collection/gamification. Final dragon branding remains flexible. These are unimplemented ideas, not additions to the initial slice. Plan a small evaluation of preparation time, interruptions and comprehension before claiming learning outcomes.
 
@@ -247,3 +251,46 @@ Append a dated entry for each meaningful change with: changes made; verification
 - Added 50 MiB browser PDF input and page-range controls (up to 20 pages). pdf-lib copies valid sub-PDFs, recursively splits oversized chunks, and limits requests to two concurrently. Validated responses merge by chunk order; combined text is reparsed for canonical IDs and original page references are retained. Repeated text is preserved and errors discard partial results. Existing 4 MiB backend request and 20,000-character combined-source limits remain.
 - Verification: 27 frontend tests passed, including a synthetic 11-page, two-request out-of-order merge with repeated text and non-first page numbers; production build and TypeScript passed. Backend isolated rerun passed 92 tests; a concurrent run had two PDF worker failures under load (90 passed). git diff --check passed. No real book, browser end-to-end, hosted deployment or live model was tested.
 - Remaining gaps: 50 MiB memory/fidelity and representative Arabic PDFs are unmeasured. All-blank/non-Arabic chunks fail existing backend validation; a single page exceeding 4 MiB cannot be processed. No whole-book source beyond 20,000 characters, per-chunk retry/progress or subtitle support. Next: try a permitted representative Arabic book and validate output/page ordering, browser resource use and hosted limits.
+
+### 2026-11-17 - Subtitle parser groundwork
+
+- Added an initial bounded SRT/WebVTT cue parser that retains text, millisecond timing, overlapping cues and stable IDs, plus focused tests. It is not connected to any endpoint or UI and does not implement movie lookup or upload yet.
+- Verification: four targeted parser tests passed from backend/. An initial command from the repository root used the wrong test path and ran no tests. Full backend suite and frontend build were not run for this isolated groundwork. No credentials were read and no provider requests were made.
+- Remaining: integrate and harden parsing for representative subtitle files, implement OpenSubtitles search/download, upload fallback, time-range selection, source/timestamp persistence and end-to-end verification. Next: implement the provider boundary and subtitle API with mocked provider tests.
+
+### 2026-11-17 - Movie lookup and subtitle preparation
+
+- Added OpenSubtitles Arabic movie-release search and selected-file download using the backend API key; SRT/VTT upload is the fallback. Provider requests are paced 260 ms apart per process, without retries. Download links are restricted to HTTPS OpenSubtitles hosts and response sizes are bounded. Search/download errors offer upload fallback. No key is sent to the browser.
+- Added timestamp-range selection, cue review, canonical passage mapping and saved cue ID/timestamp provenance through regeneration and practice. Existing 100-passage and 20,000-character limits remain. A selected subtitle stays in the page while moving between screens, avoiding another download when going back.
+- Verification: 98 backend tests passed, including six targeted parser/API fixture checks; after the response streaming change the six targeted checks passed again. Frontend 28 tests passed including subtitle timing persistence/regeneration. Production build and TypeScript passed. git diff --check passed. No live API calls, subtitle downloads, provider credentials inspection or paid model requests were made; browser end-to-end was not run.
+- Remaining gaps: real API quota/authentication, hosted operation, Arabic subtitle quality and representative file parsing are unverified. Request pacing is per process rather than shared across deployments; the existing five-download allowance can be exhausted by users. A movie range is limited to 100 cues and 20,000 characters. Next: restart the backend with the configured key, try one movie search and at most one download, then review timing and generation with an Arabic-proficient person.
+
+### 2026-11-17 - Fixed OpenSubtitles search redirect
+
+- Fixed search failures caused by OpenSubtitles returning a 301 to its normalized query URL. Follow up to three redirects only for GET requests to the same HTTPS host, without forwarding query parameters twice; apply the existing per-process request pacing to each hop. Reject cross-host redirects so credentials cannot be forwarded elsewhere. Existing download safeguards remain.
+- Verification: targeted subtitle tests passed (8), including same-host normalization and cross-host rejection; full backend suite passed (100). A live direct search and the running local backend search each returned 30 results. git diff --check passed. No subtitle was downloaded and no key was printed. Frontend build was not rerun for this backend-only fix.
+- Remaining gaps: real subtitle download and Arabic subtitle quality remain unverified; multi-instance rate limits require shared coordination. Next: user can retry movie search and choose a subtitle when ready.
+
+### 2026-11-17 - Movie subtitle spacing
+
+- Grouped and spaced movie search, release results, upload, time range and cue preview; added narrow-screen wrapping and spacing for the movie entry button. Existing subtitle behavior and Arabic text are unchanged.
+- Verification: frontend production build and TypeScript passed. Visual browser review was not performed; backend tests were not rerun for this presentation-only change.
+- Remaining: verify the movie flow on desktop and mobile with representative results and subtitle files. Next: review the layout in a browser and adjust from feedback.
+
+### 2026-11-17 - Grouped content source choices
+
+- Moved the movie action beside Paste text and Upload PDF, labeled it From movie, and placed the source name below those choices. Allowed choices to wrap on narrow screens and updated the README label.
+- Verification: frontend production build and TypeScript passed. Browser visual review and backend tests were not run for this UI-only change.
+- Remaining: visually review the choices on desktop and mobile. Next: check the complete movie subtitle flow with a representative file.
+
+### 2026-11-17 - Content field and PDF picker polish
+
+- Added spacing after the source name, labeled it required and added native required semantics; existing continue controls already reject blank names. Restyled PDF selection and page range as compact rectangular controls while preserving browsing, drag/drop and validation.
+- Verification: frontend production build and TypeScript passed. Browser visual review and backend tests were not run for this presentation change.
+- Remaining: visually review the PDF picker and its selected-file state on desktop and mobile. Next: test with a representative Arabic PDF.
+
+### 2026-11-17 - PDF drag-and-drop indication
+
+- Made the compact PDF picker explicitly invite dragging, with a dashed drop boundary and a stronger highlight while dragging; retained the existing browse and drop behavior.
+- Verification: frontend production build and TypeScript passed. Browser drag-and-drop and visual review were not performed; backend tests were not rerun for this display change.
+- Remaining: check drag feedback and file selection in desktop and mobile browsers. Next: test the complete PDF flow with a representative Arabic file.

@@ -1055,9 +1055,12 @@ footer {
   .page-title h1 {
     font-size: 27px;
   }
+  .tabs {
+    flex-wrap: wrap;
+  }
   .tabs button {
     min-width: 0;
-    flex: 1;
+    flex: 1 1 auto;
   }
   .upload {
     padding: 24px 16px;
@@ -1697,3 +1700,96 @@ input:not([type="checkbox"]):not([type="file"]),
     transition: none !important;
   }
 }
+
+/* Movie subtitle preparation */
+.subtitle-search,
+.subtitle-range {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.subtitle-search label {
+  flex: 1 1 240px;
+}
+.subtitle-search label,
+.subtitle-range label,
+.subtitle-upload label {
+  display: grid;
+  gap: 8px;
+  font-weight: 600;
+}
+.subtitle-range label {
+  flex: 1 1 150px;
+}
+.subtitle-results {
+  display: grid;
+  gap: 8px;
+}
+.subtitle-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: #fff9;
+}
+.subtitle-result span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.subtitle-result button {
+  flex-shrink: 0;
+}
+.subtitle-upload {
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: #fff9;
+}
+.subtitle-upload input[type="file"] {
+  margin: 0;
+}
+.subtitle-cues {
+  display: grid;
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+  margin-bottom: 20px;
+}
+.subtitle-cues p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: #fff9;
+}
+.subtitle-cues span {
+  flex: 1 1 200px;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+@media (max-width: 560px) {
+  .subtitle-result {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+/* Content input and compact PDF picker */
+#set-name { margin-bottom: 18px; }
+.upload { border: 1px solid var(--line); background: #edf7fd; padding: 16px; text-align: left; }
+.upload-target { flex-direction: row; justify-content: flex-start; gap: 12px; padding: 12px; border: 2px dashed #739bb9; background: #f8fcff; text-align: left; }
+.upload-target:hover, .upload-target.dragging { background: #dcefff; border-color: var(--purple); }
+.upload-target.dragging { outline: 2px solid var(--purple); outline-offset: 2px; }
+.upload-target strong { flex: 1; font-size: 14px; }
+.upload-browse { padding: 7px 12px; border: 1px solid #739bb9; background: linear-gradient(#fff, #c2dcef); color: var(--ink); box-shadow: inset 0 1px #fff; }
+.upload-help { margin: 10px 0 0; }
+.pdf-range { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.pdf-range label { flex: 1 1 150px; display: grid; gap: 6px; font-weight: 600; }
+.pdf-range p { flex-basis: 100%; margin: 0; }
+@media (max-width: 560px) { .upload-target { flex-wrap: wrap; } }

@@ -1,5 +1,10 @@
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import type { PageReference, SavedSet, Segment } from "../../lib/api/types";
+import type {
+  PageReference,
+  SavedSet,
+  Segment,
+  SubtitleReference,
+} from "../../lib/api/types";
 import { Title, SourceNameInput } from "../flow-controls";
 
 type PassagesScreenProps = {
@@ -7,6 +12,7 @@ type PassagesScreenProps = {
   mode: SavedSet["type"];
   segments: Segment[];
   pages?: PageReference[];
+  subtitles?: SubtitleReference[];
   selected: string[];
   onNameChange: (name: string) => void;
   onSelectionChange: (ids: string[]) => void;
@@ -19,6 +25,7 @@ export function PassagesScreen({
   mode,
   segments,
   pages,
+  subtitles,
   selected,
   onNameChange,
   onSelectionChange,
@@ -57,6 +64,9 @@ export function PassagesScreen({
               <span>
                 <small>
                   Passage {i + 1}
+                  {subtitles?.[i]
+                    ? ` ? ${(subtitles[i].startMs / 1000).toFixed(1)}?${(subtitles[i].endMs / 1000).toFixed(1)}s`
+                    : ""}
                   {pages?.some((p) => p.segmentIds.includes(s.id))
                     ? ` · Page ${pages.find((p) => p.segmentIds.includes(s.id))!.page}`
                     : ""}

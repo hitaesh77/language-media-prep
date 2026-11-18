@@ -134,3 +134,8 @@ Review-specific browser regression: with the same isolated fixture/backend and f
 The supplied hill-and-sky wallpaper backs translucent rectangular panels inspired by the bottom-left design reference. Library filters offer All sets and Starred (top filters on phones), with stars saved in this browser and preserved through regeneration. Existing sets need no migration. Expand About browser storage for persistence details. No cloud service is required. The supplied wallpaper is the original 3840 x 2160 WebP (about 538 KiB), used without resizing or recompression.
 
 Run `python frontend/tests/browser-library.py` against the isolated frontend on port 3100 to check library styling, stars, persistence, deletion and mobile layout. This script seeds only its isolated test browser and blocks API calls; it does not alter the production library or claim AI integration results.
+
+
+## Movie subtitles
+
+Add content ? From movie searches OpenSubtitles.com for Arabic movie releases. Select a release to download it, or upload an SRT/VTT file as a fallback, then choose a time range in seconds and review the selected cues. At most 100 cues and 20,000 characters can enter one preparation. Timestamps and cue IDs are saved with the browser set and shown during passage selection and practice. Configure `OPENSUBTITLES_API_KEY` in `backend/.env`; the key stays server-side. Each chosen release requests one subtitle download; there are no automatic retries. Provider requests are spaced at least 260 ms apart per backend process; this is not a global limit across hosted instances. Provider quotas, live coverage and hosted behavior have not been verified. Uploaded or downloaded text is sent to the configured LLM only when generation is requested.

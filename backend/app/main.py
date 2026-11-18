@@ -38,7 +38,7 @@ class RequestLimit:
         if scope["type"] != "http" or scope["method"] != "POST":
             return await self.app(scope, receive, send)
         limit = (
-            MAX_PDF_BYTES + 32768 if scope["path"] == "/api/pdf/extract" else 128 * 1024
+            MAX_PDF_BYTES + 32768 if scope["path"] == "/api/pdf/extract" else (3 * 1024 * 1024 if scope["path"] == "/api/subtitles/parse" else 128 * 1024)
         )
         body = bytearray()
         while True:
@@ -126,3 +126,38 @@ async def pdf_extract(request: Request):
         if not data or not data.startswith(b"%PDF-"):
             raise HTTPException(422, "File is empty or is not a valid PDF.")
         return await run_in_threadpool(extract_pdf, data)
+
+from pydantic import BaseModel, Field
+from .subtitles import parse_subtitles, search_subtitles, download_subtitles
+
+
+class SubtitleSearch(BaseModel):
+    query: str = Field(min_length=1, max_length=200)
+
+
+class SubtitleDownload(BaseModel):
+    file_id: int = Field(strict=True, gt=0)
+
+
+class SubtitleText(BaseModel):
+    text: str = Field(min_length=1, max_length=500000)
+
+
+@app.post('/api/subtitles/search')
+async def subtitle_search(body: SubtitleSearch):
+    if not body.query.strip():
+        raise HTTPException(422, 'Enter a movie title.')
+    return await search_subtitles(body.query.strip())
+
+
+@app.post('/api/subtitles/download')
+async def subtitle_download(body: SubtitleDownload):
+    return await download_subtitles(body.file_id)
+
+
+@app.post('/api/subtitles/parse')
+def subtitle_parse(body: SubtitleText):
+    try:
+        return parse_subtitles(body.text)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None

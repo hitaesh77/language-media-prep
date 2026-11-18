@@ -1,6 +1,7 @@
 export type Screen =
   | "home"
   | "content"
+  | "subtitle"
   | "passages"
   | "customize"
   | "loading"

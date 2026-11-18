@@ -552,3 +552,26 @@ test("book page ranges merge in order with canonical IDs and preserve repeated p
   assert.equal(new Set(result.segments.map((s) => s.id)).size, 11);
   await assert.rejects(api.processContent("", file, { start: 5, end: 30 }), /range/i);
 });
+
+test("subtitle timestamps survive saving and regeneration", async () => {
+  const { api } = setup();
+  const subtitles = segments.map((s, i) => ({
+    sourceId: s.id,
+    cueId: `cue:${i}`,
+    startMs: i * 1000,
+    endMs: i * 1000 + 900,
+  }));
+  const set = await api.generateVocabulary({ ...request(), subtitles });
+  assert.deepEqual((await api.getSet(set.id)).subtitles, subtitles);
+  assert.deepEqual(
+    (await api.generateVocabulary({ ...request(), id: set.id, subtitles })).subtitles,
+    subtitles,
+  );
+  await assert.rejects(
+    api.generateVocabulary({
+      ...request(),
+      subtitles: [{ ...subtitles[0], endMs: -1 }, subtitles[1]],
+    }),
+    /invalid/i,
+  );
+});

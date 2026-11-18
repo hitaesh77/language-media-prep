@@ -5,10 +5,11 @@ import { DEFAULT_CATEGORIES } from "../lib/api/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type SavedSet, type Segment, type Preferences } from "../lib/api/client";
 import { resetUnreadableLocalData, StorageError } from "../lib/api/storage";
-import type { PageReference } from "../lib/api/types";
+import type { PageReference, SubtitleReference } from "../lib/api/types";
 import type { Screen } from "./prep-types";
 import { AppShell } from "./app-shell";
 import { HomeScreen } from "./screens/home-screen";
+import { SubtitleScreen } from "./screens/subtitle-screen";
 import { ContentScreen } from "./screens/content-screen";
 import { PassagesScreen } from "./screens/passages-screen";
 import { CustomizeScreen } from "./screens/customize-screen";
@@ -41,6 +42,7 @@ export default function PrepApp() {
   const [pageEnd, setPageEnd] = useState<number>();
   const [segments, setSegments] = useState<Segment[]>([]);
   const [pages, setPages] = useState<PageReference[]>();
+  const [subtitles, setSubtitles] = useState<SubtitleReference[]>();
   const [selected, setSelected] = useState<string[]>([]);
   const [prefs, setPrefs] = useState(defaults);
 
@@ -123,6 +125,7 @@ export default function PrepApp() {
     setFile(undefined);
     setSegments([]);
     setPages(undefined);
+    setSubtitles(undefined);
     setSelected([]);
     setPrefs(defaults);
     navigateTo("content");
@@ -135,6 +138,7 @@ export default function PrepApp() {
     setMode(set.type);
     setSegments(set.segments);
     setPages(set.pages);
+    setSubtitles(set.subtitles);
     setFile(undefined);
     setSelected(set.selected);
     setPrefs({
@@ -158,6 +162,7 @@ export default function PrepApp() {
       setText(result.text);
       setSegments(result.segments);
       setPages(result.pages);
+      setSubtitles(undefined);
       setSelected(result.segments.map((s) => s.id));
       navigateTo("passages");
     } catch (e) {
@@ -182,12 +187,14 @@ export default function PrepApp() {
         selected,
         preferences: prefs,
         pages,
+        subtitles,
       });
       if (run !== operation.current) return;
       setActive(set);
       setSegments(set.segments);
       setSelected(set.selected);
       setPages(set.pages);
+      setSubtitles(set.subtitles);
       setFilter("All");
       navigateTo("vocabulary");
     } catch (e) {
@@ -308,20 +315,53 @@ export default function PrepApp() {
           onFileChange={setFile}
           onClearError={() => setError("")}
           onHome={returnHome}
+          onMovie={() => navigateTo("subtitle")}
           onProcess={processContent}
         />
       )}
 
+      {screen !== "home" && (
+        <div hidden={screen !== "subtitle"}>
+          <SubtitleScreen
+            onBack={() => navigateTo("content")}
+            onUse={async (cues, title) => {
+              const source = cues.map((c) => c.text).join("\n\n");
+              const result = await api.processContent(source);
+              if (
+                result.segments.length !== cues.length ||
+                result.segments.some((s, i) => s.text !== cues[i].text)
+              )
+                throw Error("Subtitle cues could not be matched to passages.");
+              setName(title);
+              setMode("Pasted text");
+              setText(source);
+              setSegments(result.segments);
+              setPages(undefined);
+              setSubtitles(
+                cues.map((c, i) => ({
+                  sourceId: result.segments[i].id,
+                  cueId: c.id,
+                  startMs: c.start_ms,
+                  endMs: c.end_ms,
+                })),
+              );
+              setSelected(result.segments.map((s) => s.id));
+              navigateTo("passages");
+            }}
+          />
+        </div>
+      )}
       {screen === "passages" && (
         <PassagesScreen
           name={name}
           mode={mode}
           segments={segments}
           pages={pages}
+          subtitles={subtitles}
           selected={selected}
           onNameChange={setName}
           onSelectionChange={setSelected}
-          onBack={() => navigateTo("content")}
+          onBack={() => navigateTo(subtitles ? "subtitle" : "content")}
           onConfirm={() => navigateTo("customize")}
         />
       )}
@@ -355,7 +395,7 @@ export default function PrepApp() {
       {screen === "practice" && currentCard && (
         <PracticeScreen
           card={currentCard}
-          passageLabel={`Passage ${(active?.segments.findIndex((s) => s.id === currentCard.sourceId) ?? -1) + 1}${active?.pages?.find((p) => p.segmentIds.includes(currentCard.sourceId)) ? ` - Page ${active.pages.find((p) => p.segmentIds.includes(currentCard.sourceId))!.page}` : ""}`}
+          passageLabel={`${active?.subtitles?.find((c) => c.sourceId === currentCard.sourceId) ? `${(active.subtitles.find((c) => c.sourceId === currentCard.sourceId)!.startMs / 1000).toFixed(1)}s - ` : ""}Passage ${(active?.segments.findIndex((s) => s.id === currentCard.sourceId) ?? -1) + 1}${active?.pages?.find((p) => p.segmentIds.includes(currentCard.sourceId)) ? ` - Page ${active.pages.find((p) => p.segmentIds.includes(currentCard.sourceId))!.page}` : ""}`}
           batchLabel={`Batch ${batch + 1} of ${batches.length} - up to 10 cards from one passage`}
           index={index}
           total={queue.length}
