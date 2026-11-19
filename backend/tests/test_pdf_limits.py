@@ -3,6 +3,7 @@
 from io import BytesIO
 from pathlib import Path
 import subprocess
+import logging
 
 import pytest
 from pypdf import PdfReader, PdfWriter
@@ -102,12 +103,20 @@ def test_extraction_deadline(monkeypatch):
     assert "time" in response.json()["detail"].lower()
 
 
-def test_browser_pdf_with_ambiguous_font_mapping_is_not_silently_rewritten():
-    # Visually legible Arabic can have invalid/misleading Unicode font mappings.
+def test_browser_pdf_with_ambiguous_font_mapping_is_preserved():
+    # Presentation forms are returned as extracted, not silently repaired.
     data = (Path(__file__).parent / "fixtures/arabic-browser.pdf").read_bytes()
     response = upload(data)
+    assert response.status_code == 200
+    assert any("\ufb50" <= char <= "\ufeff" for char in response.json()["text"])
+
+
+def test_pdf_diagnostic_does_not_log_filename_or_content(caplog):
+    with caplog.at_level(logging.WARNING):
+        response = client.post('/api/pdf/extract', files={'file': ('private-name.pdf', b'private-content', 'application/pdf')})
     assert response.status_code == 422
-    assert "encoding" in response.json()["detail"]
+    assert 'stage=request reason=invalid_header' in caplog.text
+    assert 'private-name' not in caplog.text and 'private-content' not in caplog.text
 
 
 def test_pdf_worker_capacity_returns_actionable_error(monkeypatch):

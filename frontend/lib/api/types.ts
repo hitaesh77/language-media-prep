@@ -10,6 +10,7 @@ export type SourceContent = {
   text: string;
   segments: Segment[];
   pages?: PageReference[];
+  failedPages?: { page: number; reason: string }[];
 };
 export type GenerationMetadata = {
   mode: "llm";
@@ -70,6 +71,7 @@ export interface PrepClient {
     file?: File,
     range?: { start: number; end?: number },
   ): Promise<SourceContent>;
+  importPdf(file: File, onProgress: (done: number, total: number) => void): Promise<SourceContent>;
   generateVocabulary(request: GenerateRequest): Promise<SavedSet>;
   updateFamiliar(id: string, itemIds: string[]): Promise<SavedSet>;
   getSet(id: string): Promise<SavedSet>;

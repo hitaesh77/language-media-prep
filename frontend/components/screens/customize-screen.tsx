@@ -8,6 +8,7 @@ type CustomizeScreenProps = {
   preferences: Preferences;
   isRegenerating: boolean;
   passageCount: number;
+  pdf: boolean;
   onChange: (preferences: Preferences) => void;
   onBack: () => void;
   onGenerate: () => void;
@@ -17,6 +18,7 @@ export function CustomizeScreen({
   preferences,
   isRegenerating,
   passageCount,
+  pdf,
   onChange,
   onBack,
   onGenerate,
@@ -28,7 +30,7 @@ export function CustomizeScreen({
       !presets.includes(preferences.cardsPerPassage),
   );
   const count = preferences.cardsPerPassage;
-  const maximum = Math.min(15, Math.floor(300 / Math.max(1, passageCount)));
+  const maximum = pdf ? 15 : Math.min(15, Math.floor(300 / Math.max(1, passageCount)));
   const invalidCount =
     count !== undefined && (!Number.isInteger(count) || count < 1 || count > maximum);
   return (
@@ -96,7 +98,7 @@ export function CustomizeScreen({
             });
           }}
         >
-          <option value="auto">Automatic (up to 15 total)</option>
+          <option value="auto">{pdf ? "Automatic" : "Automatic (up to 15 total)"}</option>
           {presets.map((n) => (
             <option key={n} value={n} disabled={n > maximum}>
               {n} per passage
@@ -128,12 +130,11 @@ export function CustomizeScreen({
           ? `Enter a whole number from 1 to ${maximum}.`
           : count !== undefined
             ? `${count} per passage - ${count * passageCount} cards requested across ${passageCount} passages.`
-            : "Automatic chooses up to 15 cards in total."}
+            : pdf ? "Automatic chooses up to 15 cards per batch; some passages may receive no cards." : "Automatic chooses up to 15 cards in total."}
       </p>
       <p className="notice">
         Choose a target for each selected passage. Short passages may yield fewer distinct
-        expressions. Maximum 300 cards per set. Each selected passage is generated
-        separately. More passages use more AI requests.
+        expressions. {pdf ? "Large selections are processed in batches; more passages can mean more AI requests, time, and cost. If generation fails, retrying repeats completed batches." : "Maximum 300 cards per set. Each selected passage is generated separately. More passages use more AI requests."}
       </p>
       {!["English", "Arabic"].includes(preferences.language) && (
         <p role="alert">

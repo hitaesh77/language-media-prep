@@ -3,6 +3,46 @@
 
 ## Current handoff - November 16, 2026 (supersedes historical summaries below)
 
+**PDF generation batching (November 19):** Large PDF passage selections are split into sequential requests of at most 10 passages and 20,000 characters, then combined into one locally saved set with original passage/page IDs. The old 100-passage/20,000-character limit no longer applies to the combined PDF selection. Automatic mode can omit passages; numeric targets can trigger one AI call per passage. Failure saves no partial set and retry repeats completed batches.
+
+**PDF progress and selection (November 19):** The upload and retry screens now explain that individual pages, including the last one, may take longer. The passage screen offers Select all and Deselect all; the existing 100-passage/20,000-character generation-set limits still apply.
+
+**Automatic PDF import (November 19):** Users can upload a PDF up to 20 MiB without choosing pages. The app processes pages individually with progress, retains successful pages in memory, and lists failed pages with retry. The user selects passages for a set; only those passages are reparsed, generated and saved, under the existing 20,000-character/100-passage set limits. The import preview is temporary. The supplied book still has known incorrect Arabic extraction; no OCR or font repair was added.
+
+**PDF timeout adjustment (November 19):** The PDF worker deadline is now 60 seconds (50 CPU seconds on Linux) and the browser PDF request deadline is 75 seconds. Leaving the page end blank selects five pages, with up to 50 still selectable. The 20,000-character downstream limit remains. The supplied book still has visibly incorrect extracted text.
+
+**Best-effort PDF extraction (November 19):** Presentation-form characters now pass through unchanged and the passage screen warns users to compare extracted text with the PDF. The user-supplied book still produces garbled Arabic; a direct worker check extracted pages 5?14, while pages 15?24 exceeded the existing text limit. Use shorter ranges and verified text where extraction is wrong.
+
+**Independent PDF extraction check (November 19):** PDFium extraction of the user's 80-page book also produced unrelated Unicode characters on sampled pages 5, 6, 15 and 16. Switching extractors or normalizing presentation forms alone is not a demonstrated fix. The book remains unsupported; use a verified text source or a separately reviewed OCR transcript. Next: obtain a reliable source or investigate a validated font-specific recovery approach.
+
+**PDF error page reporting (November 19):** Backend extraction errors with a known chunk page now identify that page; the frontend maps it to the original PDF page. The user's second book remains unsupported because its extracted Arabic contains unrelated Unicode characters; this change does not repair its text.
+
+**November 19 second Arabic PDF:** User-provided 80-page book triggers `reason=encoding`. Sampled pages contain Arabic presentation forms mixed with unrelated Unicode characters; simply accepting or normalizing presentation forms cannot establish faithful extraction. Embedded font mappings exist but their correctness has not been established. No PDF parser change was made.
+
+**PDF diagnostics (November 19):** Browser console logs show PDF preparation stages, chunk sizes and original page ranges; backend warnings identify upload, worker, timeout and controlled extraction failures with chunk-relative page numbers. Logs omit filenames, PDF bytes and extracted text. These diagnostics do not fix the representative book's encoding or size limitations.
+
+**November 19 representative PDF inspection:** The user's 424-page Arabic book has a cover that copies to about 10.6 MB and contains an embedded drawing. Sampled later pages 10, 20 and 50 are individually under 4 MiB but the existing extractor rejects their encoding. Raising page selection alone does not make this book usable; investigate text fidelity and resource handling without OCR or silently changing Arabic text.
+
+**November 19 PDF selection:** The browser now permits 50 selected pages (default and explicit range) in the existing bounded chunks, and accepts 50-page saved references. The 20,000-character combined source cap and 4 MiB per request remain; a copied single page plus resources can still exceed the request limit. The user's failing PDF was not available for diagnosis. Earlier 20-page selection descriptions are historical; per-request backend limits remain unchanged.
+
+**Generation schema failure (November 18):** The user reported repeated live `output_schema` 502s during subtitle flashcard generation. Added allowlisted validation reason logging; the specific cause and fix are not yet known. A numeric per-passage target sends a separate model request for each passage; use a small selection and automatic mode for diagnosis.
+
+**Subtitle passage mapping fix (November 18):** A cue containing blank lines can yield multiple source passages. Each resulting passage now retains that cue's original ID and timestamps; over 100 resulting passages produces a shorter-range message. The supplied Capernaum first-ten-minute range maps 91 cues to 92 passages successfully. Complete browser flow still needs verification.
+
+**Subtitle time rounding (November 18):** Selected end times now round forward to the next cue end, including across silence, with the actual selected end shown. Existing limits and the cue-to-segment bug below remain.
+
+**Latest movie range controls (November 18):** Subtitle selection now displays the last subtitle time and offers first 10 minutes, first 30 minutes, first half, full subtitles and custom minute ranges, with explicit current limits. Full/half choices can exceed those limits. The supplied Capernaum file exposes an unresolved integration bug: its first 10 minutes contain 91 cues but paragraph processing creates 92 segments due to blank lines within a cue, so proceeding fails. Fix cue-to-segment preservation before claiming the full flow works.
+
+**Latest Arabic subtitle fix (November 18):** A live Capernaum Arabic result contained dialogue separated from its timed cue by extra blank lines. The parser now preserves such continuation text with the previous cue. The same live result parsed into 1,019 cues; linguistic quality, timing fidelity across the complete film and hosted behavior remain unverified.
+
+**November 18 subtitle diagnostics:** Added sanitized failure logs to distinguish provider request, file retrieval, link validation, decoding and parsing failures. A user-reported live download 502 remains unresolved; retry and inspect the backend warning to identify the failing stage.
+
+**November 18 parser follow-up:** The user's retry reached parsing and was rejected as an invalid cue. Diagnostics now distinguish missing or malformed timing, missing or empty text, and invalid duration, with a block number; the actual file format issue is still unknown.
+
+**Latest subtitle retry:** The user reported `invalid_timing_format` in block 3. Logging now masks the rejected line into a bounded timing shape to distinguish structural variants without exposing subtitle text; a real retry is needed before changing accepted formats.
+
+**Arabic subtitle search follow-up:** A same-host redirect with no query could drop the movie title and Arabic language filter; the client now preserves them in that case. The user-supplied Capernaum XpoZ SRT is English and parses successfully, so it does not reproduce the downloaded Arabic result's parser failure. Live search and download after this change remain unverified.
+
 **Movie search fix:** OpenSubtitles normalized search URLs with a same-host 301 that the original client rejected. The provider now follows a bounded number of same-host HTTPS GET redirects with request pacing; a live search returned 30 results without a download. Live subtitle download remains unverified.
 
 **November 17 movie update:** OpenSubtitles search and download, SRT/VTT upload, time-range selection and saved cue timing are implemented with fixture-only tests. Live subtitle downloads, representative Arabic files, browser flow and hosted rate limits remain unverified. Provider calls are paced per process; parallel hosted instances require shared rate limiting.
@@ -294,3 +334,123 @@ Append a dated entry for each meaningful change with: changes made; verification
 - Made the compact PDF picker explicitly invite dragging, with a dashed drop boundary and a stronger highlight while dragging; retained the existing browse and drop behavior.
 - Verification: frontend production build and TypeScript passed. Browser drag-and-drop and visual review were not performed; backend tests were not rerun for this display change.
 - Remaining: check drag feedback and file selection in desktop and mobile browsers. Next: test the complete PDF flow with a representative Arabic file.
+
+### 2026-11-18 - Subtitle download diagnostics
+
+- Added stage, controlled failure reason and provider HTTP status logging for subtitle failures without logging credentials, URLs or subtitle content; existing API errors and safeguards remain.
+- Verification: 101 backend tests passed; the separately run subtitle suite passed 10 tests, including a new simulated 429 and log privacy checks. The full suite began before the final provider-status test was added. No live download or frontend build was run.
+- Remaining: the reported live 502 and real subtitle quality are unresolved. Next: retry the download and inspect the backend warning to identify the failure stage.
+
+### 2026-11-18 - Narrowed subtitle parser diagnostics
+
+- The user reported a live download reaching the parser but receiving a generic invalid-cue error. Added controlled cue failure categories and block numbers without logging subtitle content; parsing acceptance is unchanged.
+- Verification: 13 subtitle tests passed, including individual failure categories and log privacy; all 105 backend tests passed. No live provider download or frontend build was run.
+- Remaining: the cause in the actual subtitle is unknown. Next: retry and use the new reason and block number to guide a targeted fix.
+
+### 2026-11-18 - Subtitle timing shape diagnostic
+
+- The user's retry identified an unrecognized timing format in block 3. Added a bounded, character-masked timing shape to the diagnostic; cue acceptance is unchanged.
+- Verification: all 106 backend tests passed, including masking of subtitle text in the timing shape. No live subtitle download or frontend build was performed.
+- Remaining: the rejected timing format is unknown. Next: retry the same subtitle and inspect the masked timing shape before fixing parsing.
+
+### 2026-11-18 - Preserve subtitle search filters on redirects
+
+- Preserved original query parameters on same-host GET redirects that omit a query, so a normalized search does not silently lose the title or Arabic filter. Redirects with their own query remain authoritative. The supplied Capernaum XpoZ file contains English text and parses into 1,172 cues; its contents do not establish the cause of the separate live parse failure.
+- Verification: all 107 backend tests passed, including a regression checking title, language and movie type after a queryless redirect. No live provider call or frontend build was performed for this change.
+- Remaining: whether the real provider redirect caused the reported search results, Arabic download fidelity and the earlier parsing error remain unverified. Next: retry search, inspect provider language metadata and test the chosen Arabic download.
+
+### 2026-11-18 - Parse subtitle cue continuations
+
+- Investigated the first live Capernaum search result: it contains Arabic dialogue separated from a preceding cue by multiple blank lines. The parser now retains untimed text blocks as continuations of the preceding cue, preserving the intervening line breaks. Blocks with timing arrows or numeric cue identifiers still undergo validation.
+- Verification: retrieved the live subtitle for diagnosis and again for verification; the parser returned 1,019 cues containing Arabic. All 108 backend tests passed, including a regression for preserved blank lines. No frontend build or complete movie-flow review was performed.
+- Remaining: continuation association is inferred for untimed blocks, and timing and linguistic accuracy were not reviewed. Next: retry the movie flow and review representative cues and timing.
+
+### 2026-11-18 - Movie portion controls
+
+- Added subtitle end-time estimate, minute-based custom ranges, first 10/30 minutes, first half and full-subtitle presets, and visible passage/character counts with existing limits enforced.
+- Verification: 28 frontend tests and production build/TypeScript passed. Checked the supplied Capernaum file: first 10 minutes have 91 cues but parse into 92 source segments because a cue contains blank lines; this will fail the existing exact cue-to-segment check. No browser review or backend test rerun was performed.
+- Remaining: full/half selections above 100 passages or 20,000 characters are not processable; blank-line cue mapping breaks this representative file; subtitle last time is only an estimated available duration. Next: fix exact cue-to-segment mapping and design bounded larger movie processing before claiming those flows work.
+
+### 2026-11-18 - Round movie portions to subtitle boundaries
+
+- Round requested end times forward to the next complete cue and show the actual selected end, including when the requested time falls between subtitles. Existing limits remain enforced.
+- Verification: subtitle range regression passed for inside-cue, exact-boundary, silent-gap and end-of-file cases; frontend production build and TypeScript passed. Browser and backend tests were not rerun.
+- Remaining: the reported blank-line cue-to-segment mapping bug and larger movie preparation limits remain. Next: fix cue-to-segment mapping and verify the complete movie flow.
+
+### 2026-11-18 - Map subtitle cues to split passages
+
+- Mapped each canonical source passage back to its containing subtitle cue using source offsets. Cues containing blank lines may become multiple passages sharing the original cue ID and timing; source text and segment IDs remain unchanged. Reject more than 100 resulting passages with a shorter-range instruction.
+- Verification: all 30 frontend tests and the production build/TypeScript passed. The supplied Capernaum file's first ten minutes produced 91 cues and 92 correctly mapped passages. No live provider download, paid model call, browser flow or backend test rerun was made.
+- Remaining: verify local upload through passage selection and practice in a browser; ranges over the current passage and character limits still require smaller sections. Next: retry the selected range and inspect any UI error.
+
+### 2026-11-18 - Diagnose generation schema failures
+
+- The user reported repeated live output-schema failures after subtitle selection. Added allowlisted Pydantic validation reason codes without logging source text, provider output or credentials. Existing validation and error responses remain unchanged; the underlying live failure has not been fixed.
+- Verification: all 111 backend tests passed, including empty-card, blank-meaning and missing-field diagnostics; no paid model call, browser flow or frontend build was performed.
+- Remaining: identify the actual failure reason and fix its cause. Next: retry with a small passage selection and automatic count, then inspect the sanitized reason; numeric per-passage counts can trigger multiple paid model calls.
+
+### 2026-11-19 - Allow 50-page PDF ranges
+
+- Raised the selected PDF range and saved page-reference limit to 50, retaining 10-page browser chunks, two concurrent requests, the 4 MiB chunk cap and 20,000-character combined cap. Clarified that a single page plus shared resources can exceed the chunk limit. Updated current README, architecture, requirements and larger-book notes.
+- Verification: 30 frontend tests, 111 backend tests and the production frontend build passed. A 50-page synthetic fixture checks ordering, references and the 51-page rejection; the updated targeted HTTP suite passed 24 tests. No representative large Arabic PDF or hosted deployment was tested.
+- Remaining: the user's 4 MiB failure is not resolved without inspecting the PDF; dense 50-page selections can exceed the combined text cap. Next: inspect the failing PDF's page resources and consider a measured larger-source design.
+
+### 2026-11-19 - Inspected the user's failing Arabic book
+
+- Read the user-identified PDF in Downloads without modifying it. It has 424 pages; copied page 1 is 10,604,863 bytes and contains an embedded Form. Sampled copied pages 10, 20 and 50 are each below 4 MiB, but the current extractor rejects their text encoding. Page 2 has no extracted Arabic, and page 3 contains embedded drawing operations. No source text was logged or copied into the repository.
+- Verification: inspected sampled single-page copies using the existing PDF library and extractor; no application code changed and test suites were not rerun.
+- Remaining: this book cannot yet be processed reliably; the 20,000-character cap also limits long selections. Next: investigate whether an existing text extraction approach can recover faithful Arabic, and separately handle the oversized cover without OCR or silent content loss.
+
+### 2026-11-19 - PDF processing diagnostics
+
+- Added controlled browser diagnostics for PDF opening, page selection, chunking, extraction and merging, and backend diagnostics for upload validation, worker capacity, timeout and extraction categories, including chunk-relative page numbers. No PDF contents, filenames or credentials are logged. Documented how to find the two sets of logs.
+- Verification: 112 backend tests passed, including encoding reason and log privacy; 30 frontend tests passed; production build passed before the final range warning and TypeScript passed after it. No live PDF browser flow was performed for the logging change.
+- Remaining: the representative book still fails on its oversized cover and unsupported text encoding; logs do not alter extraction behavior. Next: retry and compare browser chunk location with backend reason, then investigate faithful extraction.
+
+### 2026-11-19 - Investigated second Arabic PDF encoding failure
+
+- Inspected the user-provided 80-page PDF with pypdf without modifying it. Sampled extracted pages contain Arabic presentation forms mixed with unrelated Unicode code points; sampled embedded fonts provide ToUnicode mappings, but correctness was not verified. This is not established as safe to repair by normalizing presentation forms alone.
+- Verification: inspected extraction character classes and font metadata on sample pages. No application code changed, visual comparison or tests were performed, and no document content was saved to the repository.
+- Remaining: faithful text recovery and reading order are unverified. Next: compare a suitable independent text extractor with the rendered source, then decide whether safe support is possible; preserve rejection until verified.
+
+### 2026-11-19 - Identify PDF pages on extraction failure
+
+- PDF extraction errors now include the chunk-relative page when known; the frontend translates it to the original page number. Examined sampled embedded subset fonts in the user's second PDF: those inspected have no cmap table, so reliable character recovery was not established. Source extraction safeguards remain unchanged.
+- Verification: 112 backend and 31 frontend tests passed; the targeted frontend HTTP suite passed 25 tests after a TypeScript-compatible regex fix, and the production build passed. The first build exposed an unsupported regex flag and the subsequent build passed. No browser or live Arabic PDF extraction success was claimed.
+- Remaining: this is a reporting fix, not a repair of the book's encoding. Next: investigate independent extraction and compare output to rendered Arabic before changing fidelity checks.
+
+### 2026-11-19 - Compared independent PDF extraction
+
+- Compared pypdf and locally available PDFium on pages 5, 6, 15 and 16 of the user-provided book. Both produced unrelated Unicode code points within Arabic words; PDFium also produced out-of-line characters. No PDF text was saved to the repository and extraction safeguards were unchanged.
+- Verification: inspected output from both extractors on those four pages. No application code changed and test suites were not rerun.
+- Remaining: faithful text recovery and complete reading order are unverified. Next: obtain a reliable text source or investigate a validated font-specific recovery approach; an independently reviewed OCR transcript is a workaround outside the application.
+
+### 2026-11-19 - Permit best-effort PDF text
+
+- At the user's request, stopped rejecting Arabic presentation forms and added a warning to review extracted text before generation. Output is not normalized or repaired; null/replacement character rejection and resource limits remain. Updated PDF documentation and fixture expectations.
+- Verification: direct extraction of the supplied book's pages 5?14 returned ten pages and 15,027 characters; pages 15?24 hit the text limit on chunk page 9. All 31 frontend tests and the production build passed. All 112 backend tests passed. A redundant parallel PDF-only run was interrupted after failures while the full suite and build were running; the full suite passed.
+- Remaining: the supplied book's extracted Arabic is known to contain incorrect characters and ordering, and was not tested through the browser. Next: try a short page range in the UI and compare it with the original; use verified pasted text if incorrect.
+
+### 2026-11-19 - Address PDF extraction timeouts
+
+- Increased the PDF worker deadline from 10 to 60 seconds and Linux CPU allowance from 8 to 50 seconds, with a 75-second browser deadline. A blank ending page now defaults to five pages instead of 50; users can explicitly choose up to 50. The source and generation character limits are unchanged. Updated current documentation.
+- Verification: rendered page 6 of the user's book and compared the printed Arabic greeting with extraction; the extractor inserts non-Arabic characters in that word. A direct concurrent worker check under load completed pages 5?14 in 28.27 seconds and pages 15?24 reached the existing text limit at chunk page 9 in 27.68 seconds, both with an interim 30-second deadline. Frontend tests passed 31 tests and the final production build passed. All 112 backend tests passed; the suite began before the deadline changed from 30 to 60 seconds. After that change, the PDF timeout and ambiguous-encoding tests passed separately (2 tests).
+- Remaining: browser upload and final deadline have not been verified end to end, extracted text from this PDF is not faithful, and longer inputs still hit downstream limits. Next: restart backend and frontend, retry a short range and review extracted text; plan coordinated larger-source support separately.
+
+### 2026-11-19 - Automatic PDF import and passage selection
+
+- Replaced the user-facing PDF page range with automatic per-page extraction for PDFs up to 20 MiB. Shows progress, lists failed pages and permits retry without repeating successful pages; users can continue with available passages. Imported text is temporary; only selected passages and their page references are sent for generation and saved. The existing selected-source, provider, PDF resource and grounding limits remain; selected text over 20,000 characters is not automatically batched for generation. Updated docs and the browser fixture flow.
+- Verification: 112 backend tests passed. Frontend tests passed 35 tests, including imports exceeding 50 pages and 20,000 total characters, retry of failed pages and selected-page mapping; the production build passed. A fixture-backed browser flow passed through PDF selection, generation and saved sets. Against the real FastAPI extraction route, all 80 pages of the supplied book were attempted: 77 returned text, and pages 1, 2 and 66 reported drawing failures. The combined returned text was 135,321 characters. No PDF content was committed; a successful response does not establish text fidelity.
+- Remaining: browser import of the full book, hosted behavior, large-book memory usage and Arabic linguistic fidelity have not been verified. The known incorrect font mapping remains unfixed; image/Form pages remain unsupported. Next: test the full book in the browser and investigate faithful Arabic recovery with visual comparison before claiming reliable extraction.
+
+### 2026-11-19 - PDF progress and bulk selection
+
+- Added a visible message while opening and processing PDFs, including retries, explaining that a slow page can take a minute. Added Select all and Deselect all passage controls; selecting beyond existing set limits shows an actionable warning and requires a smaller selection.
+- Verification: 35 frontend tests, 112 backend tests and production frontend build passed. The fixture-backed browser flow passed with select-all and deselect-all checks. Its first run failed because the test locator matched both button labels; an exact locator fixed the test and the rerun passed.
+- Remaining: automatic batching of selections beyond the existing limits and accurate extraction of the supplied book's font mapping remain unresolved; this change does not measure the cause of an individual slow page. Next: design multi-batch generation and investigate faithful Arabic extraction.
+
+### 2026-11-19 - Batch large PDF generation
+
+- Removed the combined PDF selection size/passage cap and added bounded sequential generation batches, preserving passage/page IDs and validating each response before saving one combined set. Expanded PDF saved-set validation and count controls to support the combined results, with AI cost/retry warnings. Kept existing limits per backend request and for non-PDF sources. Added space below passage selection buttons.
+- Verification: 37 frontend tests and the production frontend build passed; all 112 backend tests passed. New tests cover 101 passages exceeding 20,000 characters, result/page mapping, reopen and failure without replacing the prior set. A real FastAPI route with a fixture model generated and reopened a 12-passage PDF set across two batches. The fixture browser flow verified select/deselect and the spacing before the final wording/error-message adjustments; no paid model calls were made.
+- Remaining: live provider quality, cost, large-set storage capacity and actual book generation remain unverified. Automatic mode may omit passages; numeric counts can make one paid call per passage. A failed run has no partial save, and retry repeats completed batches. The existing Arabic PDF font-mapping problem remains. Next: try a modest representative selection and review meanings and source fidelity before larger paid runs.

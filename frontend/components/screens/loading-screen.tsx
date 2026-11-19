@@ -14,7 +14,7 @@ export function LoadingScreen() {
         aria-label="Vocabulary generation"
       />
       <p className="notice">
-        Generating vocabulary from your selected passages. This may take a minute.
+        Generating vocabulary from your selected passages. Large selections can take several minutes.
       </p>
     </div>
   );

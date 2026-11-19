@@ -1,5 +1,6 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import { Title } from "../flow-controls";
+import { subtitleRange } from "../../lib/subtitle-range";
 
 type Cue = { id: string; start_ms: number; end_ms: number; text: string };
 type Result = { id: number; title: string; year?: number; release: string };
@@ -79,7 +80,10 @@ export function SubtitleScreen({
     setStart(0);
     setEnd(Math.ceil(Math.max(...value.map((c) => c.end_ms)) / 1000));
   }
-  const selected = cues.filter((c) => c.end_ms > start * 1000 && c.start_ms < end * 1000);
+  const selected = subtitleRange(cues, start, end);
+  const duration = cues.length ? Math.ceil(Math.max(...cues.map((c) => c.end_ms)) / 1000) : 0;
+  const characters = [...selected.map((c) => c.text).join("\n\n")].length;
+  const invalidRange = !Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end > duration || end <= start;
   return (
     <>
       <Title
@@ -166,32 +170,51 @@ export function SubtitleScreen({
       </div>
       {cues.length > 0 && (
         <>
+          <p>
+            Subtitles end at approximately {Math.floor(duration / 60)} minutes {duration % 60} seconds. This is the last subtitle time, not necessarily the movie’s full runtime.
+          </p>
+          <p>Choose a portion to prepare. A subtitle passage is a timed line or group of lines.</p>
+          <div className="subtitle-range">
+            {[10, 30].map((minutes) => (
+              <button key={minutes} type="button" disabled={busy} onClick={() => { setStart(0); setEnd(Math.min(minutes * 60, duration)); }}>
+                First {minutes} minutes
+              </button>
+            ))}
+            <button type="button" disabled={busy} onClick={() => { setStart(0); setEnd(Math.ceil(duration / 2)); }}>First half</button>
+            <button type="button" disabled={busy} onClick={() => { setStart(0); setEnd(duration); }}>Full subtitles</button>
+          </div>
           <div className="subtitle-range">
             <label>
-              From seconds{" "}
+              From minute{" "}
               <input
                 type="number"
                 min="0"
-                value={start}
+                max={duration / 60}
+                step="any"
+                value={Math.round(start / 60 * 100) / 100}
                 disabled={busy}
-                onChange={(e) => setStart(Number(e.target.value))}
+                onChange={(e) => setStart(Number(e.target.value) * 60)}
               />
             </label>{" "}
             <label>
-              To seconds{" "}
+              To minute{" "}
               <input
                 type="number"
                 min="0"
-                value={end}
+                max={duration / 60}
+                step="any"
+                value={Math.round(end / 60 * 100) / 100}
                 disabled={busy}
-                onChange={(e) => setEnd(Number(e.target.value))}
+                onChange={(e) => setEnd(Number(e.target.value) * 60)}
               />
             </label>
           </div>
           <p>
-            {selected.length} cues selected. Choose a shorter range if the text exceeds
-            20,000 characters or 100 passages.
+            {selected.length} subtitle passages selected ({characters.toLocaleString()} characters). One preparation currently supports at most 100 passages and 20,000 characters; choose a shorter range if needed.
           </p>
+          {selected.length > 0 && (
+            <p>The end time rounds up to a complete subtitle, ending at {(Math.max(...selected.map((c) => c.end_ms)) / 1000).toFixed(1)} seconds.</p>
+          )}
           <div className="subtitle-cues">
             {selected.slice(0, 100).map((c) => (
               <p key={c.id}>
@@ -206,7 +229,7 @@ export function SubtitleScreen({
           </div>
           <button
             className="primary"
-            disabled={busy || end <= start || !selected.length || selected.length > 100}
+            disabled={busy || invalidRange || !selected.length || selected.length > 100 || characters > 20000}
             onClick={() => run(() => onUse(selected, name || query || "Movie subtitles"))}
           >
             Use selected subtitles

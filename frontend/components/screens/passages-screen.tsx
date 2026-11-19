@@ -14,6 +14,10 @@ type PassagesScreenProps = {
   pages?: PageReference[];
   subtitles?: SubtitleReference[];
   selected: string[];
+  failedPages: { page: number; reason: string }[];
+  busy: boolean;
+  progress: string;
+  onRetry: () => void;
   onNameChange: (name: string) => void;
   onSelectionChange: (ids: string[]) => void;
   onBack: () => void;
@@ -27,6 +31,10 @@ export function PassagesScreen({
   pages,
   subtitles,
   selected,
+  failedPages,
+  busy,
+  progress,
+  onRetry,
   onNameChange,
   onSelectionChange,
   onBack,
@@ -36,14 +44,31 @@ export function PassagesScreen({
     <>
       <Title
         title="Choose your passage"
-        subtitle="Select the paragraphs you want to prepare. Your original text stays intact."
+        subtitle={mode === "PDF" ? "Select the extracted passages you want to prepare." : "Select the paragraphs you want to prepare. Your original text stays intact."}
       />
       <SourceNameInput name={name} onChange={onNameChange} />
+      {mode === "PDF" && (
+        <p className="notice" role="alert">
+          PDF extraction can scramble Arabic letters and word order. Compare the text below with the original PDF before continuing. If it is incorrect, paste verified text instead.
+        </p>
+      )}
+      {failedPages.length > 0 && (
+        <div className="notice" role="status">
+          <p>These pages could not be extracted: {failedPages.map((p) => p.page).join(", ")}. You may continue with the available passages or retry the failed pages.</p>
+          <details><summary>Show reasons</summary>{failedPages.map((p) => <p key={p.page}>Page {p.page}: {p.reason}</p>)}</details>
+          <button type="button" disabled={busy} onClick={onRetry}>Retry failed pages</button>
+          {busy && <p>{progress} Some pages take longer to process; please keep this page open.</p>}
+        </div>
+      )}
       <>
         <p className="muted">
           {mode === "PDF" ? "Extracted PDF text · " : ""}
           {selected.length} of {segments.length} passages selected
         </p>
+        <div className="actions passage-selection-actions">
+          <button type="button" disabled={busy || !segments.length || selected.length === segments.length} onClick={() => onSelectionChange(segments.map((segment) => segment.id))}>Select all passages</button>
+          <button type="button" disabled={busy || !selected.length} onClick={() => onSelectionChange([])}>Deselect all passages</button>
+        </div>
         <div className="passages">
           {segments.map((s, i) => (
             <label
@@ -52,6 +77,7 @@ export function PassagesScreen({
             >
               <input
                 type="checkbox"
+                disabled={busy}
                 checked={selected.includes(s.id)}
                 onChange={() =>
                   onSelectionChange(
@@ -79,13 +105,13 @@ export function PassagesScreen({
           ))}
         </div>
         <div className="actions">
-          <button onClick={onBack}>
+          <button onClick={onBack} disabled={busy}>
             <ArrowLeft size={16} />
             Back
           </button>
           <button
             className="primary"
-            disabled={!selected.length || !name.trim()}
+            disabled={busy || !selected.length || !name.trim()}
             onClick={onConfirm}
           >
             Use selected passages

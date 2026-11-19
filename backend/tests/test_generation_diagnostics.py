@@ -164,6 +164,19 @@ def test_model_cannot_override_bound_expression_or_source(upstream):
     assert client.post("/api/generate", json=request_body()).status_code == 502
 
 
+@pytest.mark.parametrize("cards, reason", [
+    ([], "too_short"),
+    ([{"candidate_id": "c0", "meaning": " "}], "value_error"),
+    ([{"candidate_id": "c0"}], "missing"),
+])
+def test_schema_diagnostic_reports_safe_reason(upstream, caplog, cards, reason):
+    upstream["body"]["choices"][0]["message"]["content"] = json.dumps({"cards": cards})
+    with caplog.at_level(logging.WARNING):
+        assert client.post("/api/generate", json=request_body()).status_code == 502
+    assert f"category=output_schema reason={reason}" in caplog.text
+    assert "private-test-key" not in caplog.text
+
+
 def test_categories_offer_only_individual_source_words(upstream):
     assert (
         client.post(

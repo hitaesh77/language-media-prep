@@ -176,6 +176,12 @@ export const mockClient: PrepClient = {
     return set;
   },
 
+  async importPdf(file, onProgress) {
+    const result = await mockClient.processContent("", file);
+    onProgress(1, 1);
+    return result;
+  },
+
   async processContent(text, file) {
     if (file) {
       if (

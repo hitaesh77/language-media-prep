@@ -419,6 +419,9 @@ main {
 .file-name {
   overflow-wrap: anywhere;
 }
+.passage-selection-actions {
+  margin-bottom: 16px;
+}
 .passages {
   display: grid;
   gap: 14px;

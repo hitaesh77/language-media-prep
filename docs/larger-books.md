@@ -2,7 +2,7 @@
 
 ## Implementation update - November 17, 2026
 
-The browser accepts original PDFs up to 50 MiB and selects a contiguous range of at most 20 pages. It copies valid sub-PDFs, splitting further if necessary to stay within 4 MiB per request, and runs at most two extraction requests concurrently. Results are validated, merged in original page order and reparsed to obtain canonical IDs. Repeated passages are preserved; failed chunks fail the whole operation. A single page larger than 4 MiB is rejected. The combined 20,000-character source limit remains; select a shorter range if exceeded. Chunks without usable Arabic are rejected by the existing backend. Original PDFs are not retained. Real 50 MiB books, memory use, Arabic font fidelity and hosted behavior have not been benchmarked. The sections below describe the previous investigation.
+The browser accepts original PDFs up to 20 MiB and imports every page using at most two one-page extraction requests at once. It displays progress, keeps successful pages in memory and reports failures with retry or continue options. Only selected passages are sent to generation and saved. PDF selections are split into bounded generation batches and recombined into one set; the 20,000-character limit applies per batch, not per PDF set. Page text and page references are preserved for review; original PDFs and unselected text are not retained. A single page plus shared resources exceeding 4 MiB, image/Form content and unsupported encodings can still fail. Arabic font fidelity and large-book memory use remain unverified. The sections below describe prior investigation.
 
 
 Khanh Tran's October 30 review reported that a roughly 18 MB book was blocked. This is a requested capability investigation, not evidence of successful full-book processing.
@@ -10,8 +10,8 @@ Khanh Tran's October 30 review reported that a roughly 18 MB book was blocked. T
 ## Current independent limits
 
 - Upload: 4 MiB plus 32 KiB multipart overhead, enforced by frontend, HTTP middleware, route and subprocess input.
-- PDF extraction: 20 pages, 20,000 extracted Unicode code points (including paragraph separators), 2 MiB decoded stream per page, 10-second worker deadline, two workers per process. Linux additionally limits address space to 512 MiB and CPU to 8 seconds. Image/Form drawings, encryption and unusable font encodings remain unsupported.
-- Source/API/browser contracts: 20,000 code points, 128 KiB JSON request, at most 100 selected passages, at most 300 generated cards. Generation remains bounded by candidate pool, tokens, concurrency and deadlines.
+- PDF extraction: 20 pages, 20,000 extracted Unicode code points (including paragraph separators), 2 MiB decoded stream per page, 60-second worker deadline, two workers per process. Linux additionally limits address space to 512 MiB and CPU to 50 seconds. Image/Form drawings, encryption and replacement/null characters remain unsupported; other font encodings may yield incorrect text.
+- Each source/generation API request: 20,000 code points, 128 KiB JSON request, at most 100 selected passages, at most 300 generated cards; PDF sets can combine multiple requests. Generation remains bounded by candidate pool, tokens, concurrency and deadlines.
 
 Raising file/page limits alone would hit the other limits. A compressed 18 MB file says little about decoded memory or extracted text size. Browser localStorage is also limited and may reject large saves; the current failure leaves previous sets intact.
 

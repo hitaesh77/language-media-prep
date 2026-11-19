@@ -506,7 +506,7 @@ test("book page ranges merge in order with canonical IDs and preserve repeated p
   const { PDFDocument } = require("pdf-lib");
   const { File } = require("node:buffer");
   const pdf = await PDFDocument.create();
-  for (let i = 0; i < 15; i++) pdf.addPage();
+  for (let i = 0; i < 55; i++) pdf.addPage();
   const file = new File([await pdf.save()], "book.pdf", { type: "application/pdf" });
   let active = 0,
     maxActive = 0,
@@ -550,7 +550,25 @@ test("book page ranges merge in order with canonical IDs and preserve repeated p
     result.segments.map((s) => s.id),
   );
   assert.equal(new Set(result.segments.map((s) => s.id)).size, 11);
-  await assert.rejects(api.processContent("", file, { start: 5, end: 30 }), /range/i);
+  const defaultRange = await api.processContent("", file, { start: 6 });
+  assert.deepEqual(defaultRange.pages.map((p) => p.page), [6, 7, 8, 9, 10]);
+  const large = await api.processContent("", file, { start: 6, end: 55 });
+  assert.equal(large.pages.length, 50);
+  assert.equal(large.pages[0].page, 6);
+  assert.equal(large.pages[49].page, 55);
+  assert.deepEqual(large.pages.flatMap((p) => p.segmentIds), large.segments.map((s) => s.id));
+  assert.deepEqual(require('../lib/api/contracts.ts').readPages(large.pages, large.segments), large.pages);
+  await assert.rejects(api.processContent("", file, { start: 1, end: 51 }), /range/i);
+});
+
+test("PDF extraction errors identify the original page", async () => {
+  const { PDFDocument } = require("pdf-lib");
+  const { File } = require("node:buffer");
+  const pdf = await PDFDocument.create();
+  for (let i = 0; i < 10; i++) pdf.addPage();
+  const file = new File([await pdf.save()], "book.pdf", { type: "application/pdf" });
+  const api = createHttpClient({ fetch: async () => response({ detail: "Page 3 of this PDF chunk: PDF text encoding is unusable." }, 422) });
+  await assert.rejects(api.processContent("", file, { start: 5, end: 10 }), /PDF page 7: PDF text encoding is unusable/);
 });
 
 test("subtitle timestamps survive saving and regeneration", async () => {
@@ -574,4 +592,84 @@ test("subtitle timestamps survive saving and regeneration", async () => {
     }),
     /invalid/i,
   );
+});
+
+
+test("automatic PDF import preserves successful pages and retries only failures", async () => {
+  const { PDFDocument } = require("pdf-lib");
+  const pdf = await PDFDocument.create();
+  for (let i = 0; i < 3; i++) pdf.addPage();
+  const file = new File([await pdf.save()], "book.pdf", { type: "application/pdf" });
+  let calls = 0;
+  const progress = [];
+  const api = createHttpClient({ fetch: async () => {
+    const call = ++calls;
+    if (call === 2) return response({ detail: "bad page" }, 422);
+    const text = "\u0643\u0644\u0645\u0629 \u0639\u0631\u0628\u064a\u0629";
+    const segments = [{ id: "same:0", text }];
+    return response({ text, segments, pages: [{ page: 1, segmentIds: ["same:0"] }] });
+  }});
+  const first = await api.importPdf(file, (done, total) => progress.push([done, total]));
+  assert.deepEqual(first.pages.map((p) => p.page), [1, 3]);
+  assert.deepEqual(first.failedPages.map((p) => p.page), [2]);
+  assert.equal(new Set(first.segments.map((s) => s.id)).size, 2);
+  assert.deepEqual(progress.at(-1), [3, 3]);
+  const retry = await api.importPdf(file, () => {});
+  assert.equal(calls, 4);
+  assert.deepEqual(retry.pages.map((p) => p.page), [1, 2, 3]);
+  assert.deepEqual(retry.failedPages, []);
+  assert.equal(retry.segments[0].id, first.segments[0].id);
+  assert.equal(retry.segments[2].id, first.segments[1].id);
+});
+
+
+test("automatic PDF import accepts more than 50 pages and 20,000 total characters", async () => {
+  const { PDFDocument } = require("pdf-lib");
+  const pdf = await PDFDocument.create();
+  for (let i = 0; i < 51; i++) pdf.addPage();
+  const file = new File([await pdf.save()], "book.pdf", { type: "application/pdf" });
+  const text = "\u0627".repeat(400);
+  const api = createHttpClient({ fetch: async () => response({
+    text, segments: [{ id: "page:0", text }], pages: [{ page: 1, segmentIds: ["page:0"] }],
+  }) });
+  const result = await api.importPdf(file, () => {});
+  assert.equal(result.pages.length, 51);
+  assert.ok(result.text.length > 20000);
+  assert.equal(result.failedPages.length, 0);
+});
+
+
+test("automatic PDF import rejects originals larger than 20 MiB before reading", async () => {
+  const api = createHttpClient();
+  await assert.rejects(api.importPdf({ name: "large.pdf", type: "application/pdf", size: 20 * 1024 * 1024 + 1 }, () => {}), /20 MiB/);
+});
+
+
+test("large PDF generation batches and preserves source references and prior saved data on failure", async () => {
+  const saved = new Map();
+  const storage = { getItem: (k) => saved.get(k) ?? null, setItem: (k, v) => saved.set(k, v), removeItem: (k) => saved.delete(k) };
+  let calls = 0, failAt = 0;
+  const arabic = "\u0639\u0631\u0628\u064a";
+  const segments = Array.from({ length: 101 }, (_, i) => ({ id: `original:${i}`, text: arabic + String(i).padEnd(210, "x") }));
+  const text = segments.map((s) => s.text).join("\n\n");
+  const pages = segments.map((s, i) => ({ page: i + 1, segmentIds: [s.id] }));
+  const api = createHttpClient({ storage, fetch: async (url, init) => {
+    const data = JSON.parse(init.body);
+    if (url.endsWith("/api/segments")) return response(data.text.split("\n\n").map((text, i) => ({ id: `parsed:${i}`, text })));
+    calls++;
+    if (calls === failAt) return response({ detail: "batch failed" }, 502);
+    const first = data.text.split("\n\n")[0];
+    return response({ cards: [{ expression: arabic, meaning: "meaning", segment_id: data.segment_ids[0], context: first }], mode: "llm", elapsed_ms: 2, usage: null, cost: null, notice: "Review meanings" });
+  }});
+  const request = { name: "Large book", type: "PDF", text, segments, selected: segments.map((s) => s.id), pages, preferences };
+  const result = await api.generateVocabulary(request);
+  assert.equal(calls, 11);
+  assert.equal(result.vocabulary.length, 11);
+  assert.equal(result.vocabulary[1].sourceId, "original:10");
+  assert.equal(result.pages[100].page, 101);
+  assert.deepEqual(await api.getSet(result.id), result);
+  const before = saved.get("sahih-sets-v1");
+  failAt = calls + 2;
+  await assert.rejects(api.generateVocabulary({ ...request, id: result.id }), /batch failed/);
+  assert.equal(saved.get("sahih-sets-v1"), before);
 });

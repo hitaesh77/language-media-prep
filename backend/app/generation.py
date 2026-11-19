@@ -408,10 +408,17 @@ async def generate(body: GenerateInput):
                 failure = GenerationFailure(stage, messages[stage])
             else:
                 raise
+            reason = exc.reason if isinstance(exc, GroundingError) else "none"
+            if stage == "output_schema" and isinstance(exc, ValidationError):
+                error_type = exc.errors(include_input=False, include_context=False)[0]["type"]
+                if error_type in {"too_short", "too_long", "string_too_short", "string_too_long", "string_type", "list_type", "missing", "extra_forbidden", "value_error", "model_type"}:
+                    reason = error_type
+                else:
+                    reason = "other_validation"
             logger.warning(
                 "generation outcome=failure category=%s reason=%s http_status=%s provider_code=%s parameter=%s elapsed_ms=%d",
                 failure.category,
-                exc.reason if isinstance(exc, GroundingError) else "none",
+                reason,
                 failure.http_status,
                 failure.provider_code,
                 failure.parameter,

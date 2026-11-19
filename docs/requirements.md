@@ -161,7 +161,7 @@ Postgres (candidate: Neon) and private object storage (candidate: Vercel Blob) a
 
 Accounts are not automatically added by this scope change. Library identification, recovery and isolation remain design decisions; cross-device access is not promised until these are defined. Document browser-data migration or export behavior before switching storage. Flashcard position remains session-only. An embedded PDF viewer is optional; open/download is sufficient.
 
-**Backend PDF chunk limit:** 4 MiB (`4 * 1024 * 1024` bytes), with bounded multipart overhead for Vercel. The browser accepts original files up to 50 MiB and uploads bounded page chunks. Permanent PDF retention is V2, while real PDF extraction remains V1.
+**Backend PDF chunk limit:** 4 MiB (`4 * 1024 * 1024` bytes), with bounded multipart overhead for Vercel. The browser accepts original files up to 20 MiB and uploads individual pages. Permanent PDF retention is V2, while real PDF extraction remains V1.
 
 ### 8. Testing and Validation
 
@@ -269,5 +269,10 @@ Later ideas: subtitle-file movie preparation; essential versus nice-to-have rank
 
 **Book upload update (November 17):** The browser accepts original PDFs up to 50 MiB and extracts a selected range of at most 20 pages in size-bounded parallel chunks. The combined 20,000-character source limit remains. Real-book support and resource use require validation; see [larger-books.md](larger-books.md).
 
+**November 19 update:** The selected range limit is now 50 pages; the 20,000-character combined-source limit and 4 MiB per-request limit remain, so a dense range or one oversized page can still fail. See the progress log for verification.
+
 
 **Movie lookup update (November 17):** OpenSubtitles title search, Arabic release selection, SRT/VTT upload fallback and timestamp-range selection are implemented for the local flow, subject to fixture-only verification and existing source limits. Live API access and Arabic subtitle coverage remain unverified.
+
+
+**Automatic PDF import (November 19):** The upload accepts up to 20 MiB and processes all pages automatically with progress and page-level failure/retry. Full imported text is previewed in memory; selected passages alone form a generated set. Large PDF selections are split into bounded generation requests and combined. PDF fidelity, full-book capacity, and hosted behavior require further verification.

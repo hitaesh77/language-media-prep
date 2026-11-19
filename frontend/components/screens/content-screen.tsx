@@ -9,10 +9,7 @@ type ContentScreenProps = {
   text: string;
   mode: SavedSet["type"];
   file?: File;
-  pageStart: number;
-  pageEnd?: number;
-  onPageStart: (value: number) => void;
-  onPageEnd: (value: number | undefined) => void;
+  progress: string;
   busy: boolean;
   onNameChange: (name: string) => void;
   onTextChange: (text: string) => void;
@@ -29,10 +26,7 @@ export function ContentScreen({
   text,
   mode,
   file,
-  pageStart,
-  pageEnd,
-  onPageStart,
-  onPageEnd,
+  progress,
   busy,
   onNameChange,
   onTextChange,
@@ -59,8 +53,8 @@ export function ContentScreen({
       setFileError("Choose one PDF file.");
       return;
     }
-    if (!candidate.size || candidate.size > 50 * 1024 * 1024) {
-      setFileError("Choose a nonempty PDF no larger than 50 MiB.");
+    if (!candidate.size || candidate.size > 20 * 1024 * 1024) {
+      setFileError("Choose a nonempty PDF no larger than 20 MiB.");
       return;
     }
     setFileError("");
@@ -192,36 +186,11 @@ export function ContentScreen({
                 </button>
               </div>
             )}
-            <p className="upload-help">Text-based Arabic PDF, up to 50 MiB.</p>
-            {file && (
-              <div className="pdf-range">
-                <label>
-                  From page{" "}
-                  <input
-                    aria-label="From page"
-                    type="number"
-                    min="1"
-                    value={pageStart}
-                    disabled={busy}
-                    onChange={(e) => onPageStart(Number(e.target.value))}
-                  />
-                </label>
-                <label>
-                  {" "}
-                  To page{" "}
-                  <input
-                    aria-label="To page"
-                    type="number"
-                    min="1"
-                    value={pageEnd ?? ""}
-                    placeholder="Up to 20 pages"
-                    disabled={busy}
-                    onChange={(e) =>
-                      onPageEnd(e.target.value ? Number(e.target.value) : undefined)
-                    }
-                  />
-                </label>
-                <p>Select up to 20 pages and 20,000 extracted characters at a time.</p>
+            <p className="upload-help">Text-based Arabic PDF, up to 20 MiB.</p>
+            {busy && (
+              <div role="status">
+                <p>{progress || "Opening your PDF..."}</p>
+                <p>Some pages take longer to process. The last page may take a minute; please keep this page open.</p>
               </div>
             )}
             {fileError && (
@@ -230,9 +199,9 @@ export function ContentScreen({
               </p>
             )}
             <p className="notice">
-              Selected pages are sent to the server for text extraction and then
+              The PDF is processed page by page on the server and then
               discarded. Review the extracted Arabic before continuing. Scans, images and
-              some font encodings are unsupported.
+              some font encodings may produce incorrect text.
             </p>
           </div>
         )}

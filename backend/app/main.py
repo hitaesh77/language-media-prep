@@ -1,6 +1,7 @@
 """Stateless FastAPI endpoints for Arabic vocabulary preparation."""
 
 import os
+import logging
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -27,6 +28,8 @@ from .domain import (
 from .generation import generate
 from .pdf_service import MAX_PDF_BYTES, extract_pdf
 
+logger = logging.getLogger(__name__)
+
 
 class RequestLimit:
     """Count actual bytes before parsing multipart/JSON, including chunked bodies."""
@@ -47,6 +50,8 @@ class RequestLimit:
                 return
             body.extend(message.get("body", b""))
             if len(body) > limit:
+                if scope["path"] == "/api/pdf/extract":
+                    logger.warning("pdf_extract outcome=failure stage=request reason=body_limit bytes=%d", len(body))
                 return await JSONResponse(
                     {
                         "detail": "Request is too large. PDFs must be at most 4 MiB; text at most 20,000 characters."
@@ -106,6 +111,7 @@ async def pdf_extract(request: Request):
         .lower()
         .startswith("multipart/form-data")
     ):
+        logger.warning("pdf_extract outcome=failure stage=request reason=content_type")
         raise HTTPException(422, "Upload one PDF using the multipart file field.")
     async with request.form(max_files=2, max_fields=1, max_part_size=32768) as form:
         items = form.multi_items()
@@ -114,16 +120,20 @@ async def pdf_extract(request: Request):
             or items[0][0] != "file"
             or not isinstance(items[0][1], UploadFile)
         ):
+            logger.warning("pdf_extract outcome=failure stage=request reason=form_fields")
             raise HTTPException(422, "Upload exactly one PDF in the file field.")
         file = items[0][1]
         if not (file.filename or "").lower().endswith(
             ".pdf"
         ) or file.content_type not in {"application/pdf", "application/octet-stream"}:
+            logger.warning("pdf_extract outcome=failure stage=request reason=file_type")
             raise HTTPException(415, "Choose a PDF file with a PDF content type.")
         data = await file.read(MAX_PDF_BYTES + 1)
         if len(data) > MAX_PDF_BYTES:
+            logger.warning("pdf_extract outcome=failure stage=request reason=file_limit bytes=%d", len(data))
             raise HTTPException(413, "Choose a PDF no larger than 4 MiB.")
         if not data or not data.startswith(b"%PDF-"):
+            logger.warning("pdf_extract outcome=failure stage=request reason=invalid_header")
             raise HTTPException(422, "File is empty or is not a valid PDF.")
         return await run_in_threadpool(extract_pdf, data)
 

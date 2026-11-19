@@ -103,6 +103,12 @@ if __name__ == "__main__":
             timeout=25000
         )
         expect(page.get_by_text("Passage 1 · Page 1")).to_be_visible()
+        assert page.evaluate("document.querySelector('.passages').getBoundingClientRect().top - document.querySelector('.passage-selection-actions').getBoundingClientRect().bottom") >= 15
+        page.get_by_role("button", name="Select all passages", exact=True).click()
+        expect(page.locator(".passages input").first).to_be_checked()
+        page.get_by_role("button", name="Deselect all passages", exact=True).click()
+        expect(page.locator(".passages input").first).not_to_be_checked()
+        page.locator(".passages input").first.check()
         page.get_by_role("button", name="Use selected passages").click()
         page.get_by_role("button", name="Generate vocabulary", exact=True).click()
         expect(page.get_by_role("heading", name="Your vocabulary")).to_be_visible(

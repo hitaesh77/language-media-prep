@@ -1,5 +1,6 @@
 "use client";
 import { practiceBatches } from "../lib/practice";
+import { preparePdfSelection } from "../lib/pdf-selection";
 import { DEFAULT_CATEGORIES } from "../lib/api/types";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -10,6 +11,7 @@ import type { Screen } from "./prep-types";
 import { AppShell } from "./app-shell";
 import { HomeScreen } from "./screens/home-screen";
 import { SubtitleScreen } from "./screens/subtitle-screen";
+import { subtitleReferences } from "../lib/subtitle-range";
 import { ContentScreen } from "./screens/content-screen";
 import { PassagesScreen } from "./screens/passages-screen";
 import { CustomizeScreen } from "./screens/customize-screen";
@@ -38,8 +40,8 @@ export default function PrepApp() {
   const [text, setText] = useState("");
   const [mode, setMode] = useState<"Pasted text" | "PDF">("Pasted text");
   const [file, setFile] = useState<File>();
-  const [pageStart, setPageStart] = useState(1);
-  const [pageEnd, setPageEnd] = useState<number>();
+  const [progress, setProgress] = useState("");
+  const [failedPages, setFailedPages] = useState<{ page: number; reason: string }[]>([]);
   const [segments, setSegments] = useState<Segment[]>([]);
   const [pages, setPages] = useState<PageReference[]>();
   const [subtitles, setSubtitles] = useState<SubtitleReference[]>();
@@ -123,6 +125,8 @@ export default function PrepApp() {
     setText("");
     setMode("Pasted text");
     setFile(undefined);
+    setProgress("");
+    setFailedPages([]);
     setSegments([]);
     setPages(undefined);
     setSubtitles(undefined);
@@ -154,16 +158,17 @@ export default function PrepApp() {
     setBusy(true);
     setError("");
     try {
-      const result = await api.processContent(text, mode === "PDF" ? file : undefined, {
-        start: pageStart,
-        end: pageEnd,
-      });
+      setProgress(mode === "PDF" ? "Opening your PDF..." : "");
+      const result = mode === "PDF" && file
+        ? await api.importPdf(file, (done, total) => { if (run === operation.current) setProgress(`Processed ${done} of ${total} pages`); })
+        : await api.processContent(text);
       if (run !== operation.current) return;
       setText(result.text);
       setSegments(result.segments);
       setPages(result.pages);
       setSubtitles(undefined);
-      setSelected(result.segments.map((s) => s.id));
+      setFailedPages(result.failedPages ?? []);
+      setSelected((previous) => screen === "passages" ? previous.filter((id) => result.segments.some((segment) => segment.id === id)) : mode === "PDF" ? [] : result.segments.map((s) => s.id));
       navigateTo("passages");
     } catch (e) {
       if (run === operation.current) showError(e);
@@ -178,19 +183,31 @@ export default function PrepApp() {
     setBusy(true);
     navigateTo("loading");
     try {
+      let generationText = text;
+      let generationSegments = segments;
+      let generationSelected = selected;
+      let generationPages = pages;
+      if (mode === "PDF" && !active) {
+        const prepared = await preparePdfSelection(segments, pages, selected, async (source) => (await api.processContent(source)).segments);
+        generationText = prepared.text;
+        generationSegments = prepared.segments;
+        generationSelected = prepared.selected;
+        generationPages = prepared.pages;
+      }
       const set = await api.generateVocabulary({
         id: active?.id,
         name: name.trim(),
         type: mode,
-        text,
-        segments,
-        selected,
+        text: generationText,
+        segments: generationSegments,
+        selected: generationSelected,
         preferences: prefs,
-        pages,
+        pages: generationPages,
         subtitles,
       });
       if (run !== operation.current) return;
       setActive(set);
+      setText(set.text);
       setSegments(set.segments);
       setSelected(set.selected);
       setPages(set.pages);
@@ -304,10 +321,7 @@ export default function PrepApp() {
           text={text}
           mode={mode}
           file={file}
-          pageStart={pageStart}
-          pageEnd={pageEnd}
-          onPageStart={setPageStart}
-          onPageEnd={setPageEnd}
+          progress={progress}
           busy={busy}
           onNameChange={setName}
           onTextChange={setText}
@@ -327,24 +341,15 @@ export default function PrepApp() {
             onUse={async (cues, title) => {
               const source = cues.map((c) => c.text).join("\n\n");
               const result = await api.processContent(source);
-              if (
-                result.segments.length !== cues.length ||
-                result.segments.some((s, i) => s.text !== cues[i].text)
-              )
-                throw Error("Subtitle cues could not be matched to passages.");
+              if (result.segments.length > 100)
+                throw Error("This selection contains more than 100 passages. Choose a shorter range.");
+              const references = subtitleReferences(cues, result.segments);
               setName(title);
               setMode("Pasted text");
               setText(source);
               setSegments(result.segments);
               setPages(undefined);
-              setSubtitles(
-                cues.map((c, i) => ({
-                  sourceId: result.segments[i].id,
-                  cueId: c.id,
-                  startMs: c.start_ms,
-                  endMs: c.end_ms,
-                })),
-              );
+              setSubtitles(references);
               setSelected(result.segments.map((s) => s.id));
               navigateTo("passages");
             }}
@@ -359,6 +364,10 @@ export default function PrepApp() {
           pages={pages}
           subtitles={subtitles}
           selected={selected}
+          failedPages={failedPages}
+          busy={busy}
+          progress={progress}
+          onRetry={processContent}
           onNameChange={setName}
           onSelectionChange={setSelected}
           onBack={() => navigateTo(subtitles ? "subtitle" : "content")}
@@ -371,6 +380,7 @@ export default function PrepApp() {
           preferences={prefs}
           isRegenerating={!!active}
           passageCount={selected.length}
+          pdf={mode === "PDF"}
           onChange={setPrefs}
           onBack={() => navigateTo(active ? "vocabulary" : "passages")}
           onGenerate={generateVocabulary}
