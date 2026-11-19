@@ -72,7 +72,7 @@ export interface PrepClient {
     range?: { start: number; end?: number },
   ): Promise<SourceContent>;
   importPdf(file: File, onProgress: (done: number, total: number) => void): Promise<SourceContent>;
-  generateVocabulary(request: GenerateRequest): Promise<SavedSet>;
+  generateVocabulary(request: GenerateRequest, onProgress?: (message: string) => void): Promise<SavedSet>;
   updateFamiliar(id: string, itemIds: string[]): Promise<SavedSet>;
   getSet(id: string): Promise<SavedSet>;
   deleteSet(id: string): Promise<void>;

@@ -787,7 +787,11 @@ test("large subtitle selections batch and retain timing through regeneration", a
     return response({ cards: [{ expression: "\u0639\u0631\u0628\u064a", meaning: "meaning", segment_id: data.segment_ids[0], context: data.text.split("\n\n")[0] }], mode: "llm", elapsed_ms: 2, usage: null, cost: null, notice: "Review meanings" });
   }});
   const request = { name: "Movie", type: "Pasted text", text: segments.map((s) => s.text).join("\n\n"), segments, selected: segments.map((s) => s.id), subtitles, preferences: { ...preferences, cardsPerPassage: 5 } };
-  const set = await api.generateVocabulary(request);
+  const progress = [];
+  const set = await api.generateVocabulary(request, (message) => progress.push(message));
+  assert.equal(progress[0], "Processed 0 of 11 batches");
+  assert.equal(progress[11], "Processed 11 of 11 batches");
+  assert.equal(progress[12], "Generating additional cards if needed...");
   assert.equal(set.vocabulary.length, 11);
   assert.deepEqual(set.subtitles, subtitles);
   assert.deepEqual(await api.getSet(set.id), set);

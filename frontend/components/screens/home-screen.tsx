@@ -86,7 +86,7 @@ export function HomeScreen({
                   <strong>{set.name}</strong>
                   <small>
                     {set.vocabulary.length}{" "}
-                    {set.vocabulary.length === 1 ? "word" : "words"} &middot; {set.type}
+                    {set.vocabulary.length === 1 ? "word" : "words"} &middot; {set.subtitles?.length ? "Movie subtitles" : set.type}
                     {!set.generation ? " / Legacy demo" : ""}
                   </small>
                   <span className="set-status">

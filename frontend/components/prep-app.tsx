@@ -181,6 +181,7 @@ export default function PrepApp() {
     if (busy) return;
     const run = ++operation.current;
     setBusy(true);
+    setProgress("Generating vocabulary...");
     navigateTo("loading");
     try {
       let generationText = text;
@@ -204,7 +205,7 @@ export default function PrepApp() {
         preferences: prefs,
         pages: generationPages,
         subtitles,
-      });
+      }, (message) => { if (run === operation.current) setProgress(message); });
       if (run !== operation.current) return;
       setActive(set);
       setText(set.text);
@@ -385,7 +386,7 @@ export default function PrepApp() {
         />
       )}
 
-      {screen === "loading" && <LoadingScreen />}
+      {screen === "loading" && <LoadingScreen progress={progress} />}
 
       {screen === "vocabulary" && active && (
         <VocabularyScreen

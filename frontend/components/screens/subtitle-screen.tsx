@@ -1,4 +1,5 @@
 ﻿import { useEffect, useRef, useState } from "react";
+import { FileText } from "lucide-react";
 import { Title } from "../flow-controls";
 import { moviePosition, subtitleRange } from "../../lib/subtitle-range";
 
@@ -26,6 +27,8 @@ export function SubtitleScreen({
   const [error, setError] = useState("");
   const [name, setName] = useState("");
   const controller = useRef<AbortController | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
   useEffect(() => () => controller.current?.abort(), []);
   async function post(path: string, body: unknown) {
     const abort = new AbortController();
@@ -58,6 +61,19 @@ export function SubtitleScreen({
     } finally {
       setBusy(false);
     }
+  }
+  function chooseFiles(files: File[]) {
+    if (busy || !files.length) return;
+    if (files.length !== 1 || !/\.(srt|vtt)$/i.test(files[0].name)) {
+      setError("Choose one SRT or VTT file.");
+      return;
+    }
+    const f = files[0];
+    void run(async () => {
+      if (!f.size || f.size > 500000) throw Error("Choose a nonempty subtitle file of at most 500 KB.");
+      load(await post("parse", { text: await f.text() }));
+      setName(f.name.replace(/\.(srt|vtt)$/i, ""));
+    });
   }
   function load(value: unknown) {
     if (
@@ -149,24 +165,17 @@ export function SubtitleScreen({
         ))}
       </div>
       <div className="subtitle-upload">
-        <label>
-          Upload SRT or VTT{" "}
-          <input
-            type="file"
-            accept=".srt,.vtt,text/plain,text/vtt"
-            disabled={busy}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f)
-                run(async () => {
-                  if (f.size > 500000)
-                    throw Error("Subtitle file must be at most 500 KB.");
-                  load(await post("parse", { text: await f.text() }));
-                  setName(f.name.replace(/\.(srt|vtt)$/i, ""));
-                });
-            }}
-          />
-        </label>
+        <input ref={fileInput} type="file" hidden accept=".srt,.vtt,text/plain,text/vtt" disabled={busy} aria-label="Choose subtitle file" onChange={(e) => { chooseFiles(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
+        <button type="button" className={`upload-target${dragging ? " dragging" : ""}`} disabled={busy}
+          onClick={() => fileInput.current?.click()}
+          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = busy ? "none" : "copy"; if (!busy) setDragging(true); }}
+          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false); }}
+          onDrop={(e) => { e.preventDefault(); setDragging(false); chooseFiles(Array.from(e.dataTransfer.files)); }}>
+          <FileText size={24} aria-hidden="true" />
+          <strong>{dragging ? "Drop your subtitles here" : "Drag an SRT or VTT file here"}</strong>
+          <span className="upload-browse">Browse files</span>
+        </button>
+        <p className="upload-help">SRT or VTT subtitle file, up to 500 KB.</p>
       </div>
       {cues.length > 0 && (
         <>

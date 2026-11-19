@@ -48,7 +48,7 @@ export function AppShell({ screen, onHome, children }: AppShellProps) {
           <House size={16} /> Home
         </button>
       </header>
-      <main className={mainClassName}>{children}</main>
+      <main className={`${mainClassName}${screen === "loading" ? " loading-page" : ""}`}>{children}</main>
       <footer>
         <span className="footer-brand">
           <BrandLogo />

@@ -405,7 +405,7 @@ export function createHttpClient(options: Options = {}): PrepClient {
       validText(text);
       return { text, segments: await parse(text) };
     },
-    async generateVocabulary(request: GenerateRequest) {
+    async generateVocabulary(request: GenerateRequest, onProgress?: (message: string) => void) {
       const count = request.preferences.cardsPerPassage;
       const initialOperation = cancelled;
       const generationStarted = Date.now();
@@ -436,6 +436,7 @@ export function createHttpClient(options: Options = {}): PrepClient {
         const key = JSON.stringify(request);
         if (generationDraft?.key !== key) generationDraft = { key, vocabulary: [], usages: [] };
         const { vocabulary, usages } = generationDraft;
+        onProgress?.(`Processed ${usages.length} of ${batches.length} batches`);
         for (const group of batches.slice(usages.length)) {
           if (operation !== cancelled) throw Error("Request cancelled.");
           const text = group.map((segment) => segment.text).join("\n\n");
@@ -467,6 +468,7 @@ export function createHttpClient(options: Options = {}): PrepClient {
             const message = error instanceof Error ? error.message : "Generation failed.";
             if (count !== undefined && message === "No vocabulary candidates found. Try a longer Arabic passage.") {
               usages.push(null);
+              onProgress?.(`Processed ${usages.length} of ${batches.length} batches`);
               continue;
             }
             throw Error(`${message} ${usages.length} of ${batches.length} batches are retained in this tab. Try again to resume; retrying may incur additional AI charges.`);
@@ -479,8 +481,10 @@ export function createHttpClient(options: Options = {}): PrepClient {
             vocabulary.push({ ...card, sourceId, id: JSON.stringify([sourceId, card.expression]) });
           }
           usages.push(result.generation?.usage ?? null);
+          onProgress?.(`Processed ${usages.length} of ${batches.length} batches`);
         }
         const finalVocabulary = [...vocabulary];
+        if (count !== undefined) onProgress?.("Generating additional cards if needed...");
         const filled = count !== undefined ? await fill(batches, finalVocabulary, request, operation) : undefined;
         const allUsages = [...usages, ...(filled?.usage ?? [])];
         const usage = allUsages.every((value) => value !== null) ? allUsages.reduce<Record<string, number>>((sum, value) => {
@@ -624,6 +628,7 @@ export function createHttpClient(options: Options = {}): PrepClient {
       if (count !== undefined && !options.child) {
         const selectedSegments = segments.filter((s) => selected.includes(s.id));
         const groups = Array.from({ length: Math.ceil(selectedSegments.length / 10) }, (_, i) => selectedSegments.slice(i * 10, i * 10 + 10));
+        onProgress?.("Generating additional cards if needed...");
         const filled = await fill(groups, vocabulary, request, initialOperation);
         generation.elapsedMs = Date.now() - generationStarted;
         generation.notice = `${vocabulary.length} of ${filled.target} requested cards. ${filled.failed ? "Some additional generation failed; existing cards were kept. " : ""}First-pass details: ${generation.notice}`;

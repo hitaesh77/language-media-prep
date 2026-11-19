@@ -3,6 +3,8 @@
 
 ## Current handoff - November 16, 2026 (supersedes historical summaries below)
 
+**Generation and upload UI (November 19):** Centered the loading view, report completed generation batches and the optional fill stage, label subtitle sets on the home page, and provide matching file picker and dashed drag/drop targets for PDF and subtitle files. Individual model requests do not expose incremental progress. Browser visual and drag/drop verification remain outstanding.
+
 **Set-wide numeric target fill (November 19):** Numeric generation aims for the selected count per passage, then makes up to one extra fill request per passage group toward the overall target, excluding existing source/expression pairs. Cards can be unevenly distributed; the result reports actual versus target and retains first-pass cards on fill failure. Additional provider calls cost time and money. Live provider quality and actual improvement remain unverified.
 
 **Credit passage generation fix (November 19):** Logs showed the provider returned whitespace-only meanings for a credit/name passage twice; one invalid passage aborted the numeric-target batch. Numeric generation now skips blank meanings tied to known candidate IDs and accepts zero cards for individual passages, while validating and grounding all retained cards. A completely empty request still fails; combined batch notices report how many selected passages lack cards. Live provider and browser recovery remain unverified.
@@ -501,3 +503,9 @@ Append a dated entry for each meaningful change with: changes made; verification
 - Strengthened the numeric first-pass prompt and added a bounded fill API and client pass to redistribute shortfalls across groups, preserve source grounding and prevent duplicates. Added actual/target and partial-fill failure notices and updated count guidance. Existing first-pass cards survive fill errors; a failed final storage write retains only first-pass batch drafts.
 - Verification: 45 frontend tests and the production build passed. The complete backend suite passed 122 tests before the final candidate-exclusion adjustment; afterward, 32 candidate and diagnostics tests passed. Backend tests reported one dependency deprecation warning. Tests cover fill exclusion, duplicate rejection, cross-batch redistribution, target reporting and preservation on fill failure.
 - Remaining: no live paid-provider or browser end-to-end generation was run. One fill call per group can leave a shortfall; fill adds time/cost and AI meanings/categories still require review. Next: try a representative movie selection, compare actual/target and review meanings.
+
+### 2026-11-19 - Generation progress and file upload UI
+
+- Centered the generation loading view and display completed batch counts and the additional generation stage. Existing subtitle sets display Movie subtitles in the library. Subtitle upload now matches the PDF file picker and dashed drop target, with file validation.
+- Verification: all 45 frontend tests passed, including batch progress and fill-stage reporting; the frontend production build passed before the final CSS positioning adjustment. No backend changes or paid calls were made.
+- Remaining: no browser visual or drag/drop test was performed, and individual model requests cannot report incremental progress. Next: visually check desktop and mobile loading and both upload targets in a browser.

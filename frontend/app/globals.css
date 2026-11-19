@@ -1785,3 +1785,6 @@ input:not([type="checkbox"]):not([type="file"]),
 .pdf-range label { flex: 1 1 150px; display: grid; gap: 6px; font-weight: 600; }
 .pdf-range p { flex-basis: 100%; margin: 0; }
 @media (max-width: 560px) { .upload-target { flex-wrap: wrap; } }
+
+.workspace-shell .loading-page { display: flex; align-items: center; justify-content: center; }
+.loading { width: 100%; padding: 0; transform: translateY(-25px); }
