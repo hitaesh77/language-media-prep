@@ -19,7 +19,8 @@ class Candidate:
 
 
 def source_candidates(
-    segments: list[Segment], max_words: int = MAX_WORDS
+    segments: list[Segment], max_words: int = MAX_WORDS,
+    excluded: set[tuple[str, str]] | None = None,
 ) -> list[Candidate]:
     # Keep exact characters and whitespace. Do not stem, normalize or detach clitics.
     bins = []
@@ -36,7 +37,7 @@ def source_candidates(
                 ):
                     continue
                 expression = segment.text[span[0].start() : span[-1].end()]
-                if len(expression) > 200 or expression in seen:
+                if len(expression) > 200 or expression in seen or (excluded and (segment.id, expression) in excluded):
                     continue
                 seen.add(expression)
                 bucket.append((expression, segment.id))

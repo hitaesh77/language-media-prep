@@ -401,7 +401,7 @@ test("per-passage card target is forwarded and survives browser storage", async 
   const req = request();
   req.preferences = { ...req.preferences, cardsPerPassage: 3 };
   const set = await api.generateVocabulary(req);
-  assert.equal(JSON.parse(calls.at(-1).body).cards_per_passage, 3);
+  assert.equal(JSON.parse(calls.find((c) => c.url.endsWith("/api/generate")).body).cards_per_passage, 3);
   assert.equal((await api.getSet(set.id)).preferences.cardsPerPassage, 3);
 });
 test("unsupported language and invalid card budgets fail before requests", async () => {
@@ -672,4 +672,125 @@ test("large PDF generation batches and preserves source references and prior sav
   failAt = calls + 2;
   await assert.rejects(api.generateVocabulary({ ...request, id: result.id }), /batch failed/);
   assert.equal(saved.get("sahih-sets-v1"), before);
+  const failedCalls = calls;
+  const resumed = await api.generateVocabulary({ ...request, id: result.id });
+  assert.equal(calls - failedCalls, 10);
+  assert.equal(resumed.vocabulary.length, 11);
+});
+
+test("batch retries malformed model output once", async () => {
+  let calls = 0;
+  const saved = new Map();
+  const segments = Array.from({ length: 11 }, (_, i) => ({ id: `s:${i}`, text: "عربي" + i }));
+  const api = createHttpClient({ storage: { getItem: (k) => saved.get(k) ?? null, setItem: (k, v) => saved.set(k, v), removeItem: (k) => saved.delete(k) }, fetch: async (url, init) => {
+    const data = JSON.parse(init.body);
+    if (url.endsWith("/api/segments")) return response(data.text.split("\n\n").map((text, i) => ({ id: `p:${i}`, text })));
+    calls++;
+    if (calls === 1) return response({ detail: "AI generation did not match the required vocabulary format. Try again." }, 502);
+    return response({ cards: [{ expression: "عربي", meaning: "meaning", segment_id: data.segment_ids[0], context: data.text.split("\n\n")[0] }], mode: "llm", elapsed_ms: 2, usage: null, cost: null, notice: "Review meanings" });
+  }});
+  const set = await api.generateVocabulary({ name: "Movie", type: "Pasted text", text: segments.map((s) => s.text).join("\n\n"), segments, selected: segments.map((s) => s.id), subtitles: segments.map((s, i) => ({ sourceId: s.id, cueId: `c:${i}`, startMs: i * 1000, endMs: i * 1000 + 900 })), preferences });
+  assert.equal(calls, 3);
+  assert.equal(set.vocabulary.length, 2);
+});
+
+test("an empty numeric batch does not prevent later batches from generating", async () => {
+  const saved = new Map();
+  const segments = Array.from({ length: 11 }, (_, i) => ({ id: `s:${i}`, text: "عربي" + i }));
+  let calls = 0;
+  const api = createHttpClient({ storage: { getItem: (k) => saved.get(k) ?? null, setItem: (k, v) => saved.set(k, v), removeItem: (k) => saved.delete(k) }, fetch: async (url, init) => {
+    const data = JSON.parse(init.body);
+    if (url.endsWith("/api/segments")) return response(data.text.split("\n\n").map((text, i) => ({ id: `p:${i}`, text })));
+    if (url.endsWith("/api/generate/fill")) return response({ detail: "No vocabulary candidates found. Try a longer Arabic passage." }, 422);
+    if (++calls === 1) return response({ detail: "No vocabulary candidates found. Try a longer Arabic passage." }, 422);
+    return response({ cards: [{ expression: "عربي", meaning: "meaning", segment_id: data.segment_ids[0], context: data.text }], mode: "llm", elapsed_ms: 2, usage: null, cost: null, notice: "Review meanings" });
+  }});
+  const set = await api.generateVocabulary({ name: "Movie", type: "Pasted text", text: segments.map((s) => s.text).join("\n\n"), segments, selected: segments.map((s) => s.id), subtitles: segments.map((s, i) => ({ sourceId: s.id, cueId: `c:${i}`, startMs: i * 1000, endMs: i * 1000 + 900 })), preferences: { ...preferences, cardsPerPassage: 3 } });
+  assert.equal(calls, 2);
+  assert.equal(set.vocabulary.length, 1);
+  assert.match(set.generation.notice, /10 selected passages have no cards/);
+});
+
+test("fill pass reaches the total using additional words from another passage", async () => {
+  const saved = new Map();
+  const parts = ["عربي بيت جميل", "عربي كتاب كبير"];
+  let fillCalls = 0;
+  const api = createHttpClient({ storage: { getItem: (k) => saved.get(k) ?? null, setItem: (k, v) => saved.set(k, v), removeItem: (k) => saved.delete(k) }, fetch: async (url, init) => {
+    const data = JSON.parse(init.body);
+    if (url.endsWith("/api/segments")) return response(data.text.split("\n\n").map((text, i) => ({ id: `p:${i}`, text })));
+    const base = { mode: "llm", elapsed_ms: 2, usage: { total_tokens: 2 }, cost: null, notice: "Review meanings" };
+    if (url.endsWith("/api/generate/fill")) {
+      fillCalls++;
+      assert.equal(data.target, 2);
+      assert.equal(data.existing.length, 2);
+      return response({ ...base, cards: ["كتاب", "كبير"].map((expression) => ({ expression, meaning: "meaning", segment_id: "p:1", context: parts[1] })) });
+    }
+    return response({ ...base, cards: parts.map((text, i) => ({ expression: "عربي", meaning: "meaning", segment_id: `p:${i}`, context: text })) });
+  }});
+  const set = await api.generateVocabulary({ name: "Movie", type: "Pasted text", text: parts.join("\n\n"), segments: parts.map((text, i) => ({ id: `p:${i}`, text })), selected: ["p:0", "p:1"], preferences: { ...preferences, cardsPerPassage: 2 } });
+  assert.equal(fillCalls, 1);
+  assert.equal(set.vocabulary.length, 4);
+  assert.equal(set.vocabulary.filter((v) => v.sourceId === "p:1").length, 3);
+  assert.match(set.generation.notice, /4 of 4 requested/);
+  assert.equal(set.generation.usage.total_tokens, 4);
+});
+
+test("failed fill preserves first-pass cards and reports the shortfall", async () => {
+  const { api, state } = setup();
+  state.generation = (init) => JSON.parse(init.body).target
+    ? response({ detail: "provider unavailable" }, 502)
+    : response(output());
+  const set = await api.generateVocabulary({ ...request(), preferences: { ...preferences, cardsPerPassage: 3 } });
+  assert.equal(set.vocabulary.length, 1);
+  assert.match(set.generation.notice, /1 of 3 requested.*additional generation failed/);
+  assert.equal((await api.getSet(set.id)).vocabulary.length, 1);
+});
+
+test("duplicate fill output is rejected without losing first-pass cards", async () => {
+  const { api } = setup();
+  const set = await api.generateVocabulary({ ...request(), preferences: { ...preferences, cardsPerPassage: 3 } });
+  assert.equal(set.vocabulary.length, 1);
+  assert.match(set.generation.notice, /additional generation failed/);
+});
+
+test("fill redistributes a shortfall across movie batches", async () => {
+  const saved = new Map();
+  const segments = Array.from({ length: 11 }, (_, i) => ({ id: `s:${i}`, text: `عربي بيت ${i}` }));
+  let firstPass = 0, fillPass = 0;
+  const api = createHttpClient({ storage: { getItem: (k) => saved.get(k) ?? null, setItem: (k, v) => saved.set(k, v), removeItem: (k) => saved.delete(k) }, fetch: async (url, init) => {
+    const data = JSON.parse(init.body);
+    if (url.endsWith("/api/segments")) return response(data.text.split("\n\n").map((text, i) => ({ id: `p:${i}`, text })));
+    const meta = { mode: "llm", elapsed_ms: 1, usage: null, cost: null, notice: "Review" };
+    if (url.endsWith("/api/generate/fill")) {
+      fillPass++;
+      if (fillPass > 1) return response({ detail: "No vocabulary candidates found. Try a longer Arabic passage." }, 422);
+      return response({ ...meta, cards: [{ expression: "بيت", meaning: "house", segment_id: "p:0", context: data.text.split("\n\n")[0] }] });
+    }
+    if (++firstPass === 1) return response({ detail: "No vocabulary candidates found. Try a longer Arabic passage." }, 422);
+    return response({ ...meta, cards: [{ expression: "عربي", meaning: "Arabic", segment_id: "p:0", context: data.text }] });
+  }});
+  const set = await api.generateVocabulary({ name: "Movie", type: "Pasted text", text: segments.map((s) => s.text).join("\n\n"), segments, selected: segments.map((s) => s.id), subtitles: segments.map((s, i) => ({ sourceId: s.id, cueId: `c:${i}`, startMs: i * 1000, endMs: i * 1000 + 900 })), preferences: { ...preferences, cardsPerPassage: 2 } });
+  assert.equal(set.vocabulary.length, 2);
+  assert.deepEqual(set.vocabulary.map((v) => v.sourceId), ["s:0", "s:10"]);
+  assert.match(set.generation.notice, /2 of 22 requested/);
+});
+
+
+test("large subtitle selections batch and retain timing through regeneration", async () => {
+  const saved = new Map();
+  const storage = { getItem: (k) => saved.get(k) ?? null, setItem: (k, v) => saved.set(k, v), removeItem: (k) => saved.delete(k) };
+  const segments = Array.from({ length: 101 }, (_, i) => ({ id: `subtitle:${i}`, text: "\u0639\u0631\u0628\u064a" + i }));
+  const subtitles = segments.map((s, i) => ({ sourceId: s.id, cueId: `cue:${i}`, startMs: i * 1000, endMs: i * 1000 + 900 }));
+  const api = createHttpClient({ storage, fetch: async (url, init) => {
+    const data = JSON.parse(init.body);
+    if (url.endsWith("/api/segments")) return response(data.text.split("\n\n").map((text, i) => ({ id: `parsed:${i}`, text })));
+    return response({ cards: [{ expression: "\u0639\u0631\u0628\u064a", meaning: "meaning", segment_id: data.segment_ids[0], context: data.text.split("\n\n")[0] }], mode: "llm", elapsed_ms: 2, usage: null, cost: null, notice: "Review meanings" });
+  }});
+  const request = { name: "Movie", type: "Pasted text", text: segments.map((s) => s.text).join("\n\n"), segments, selected: segments.map((s) => s.id), subtitles, preferences: { ...preferences, cardsPerPassage: 5 } };
+  const set = await api.generateVocabulary(request);
+  assert.equal(set.vocabulary.length, 11);
+  assert.deepEqual(set.subtitles, subtitles);
+  assert.deepEqual(await api.getSet(set.id), set);
+  const regenerated = await api.generateVocabulary({ ...request, id: set.id });
+  assert.deepEqual(regenerated.subtitles, subtitles);
 });

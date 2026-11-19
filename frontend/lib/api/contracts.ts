@@ -119,8 +119,8 @@ export function metadata(value: unknown): GenerationMetadata {
 export function readSavedSet(value: unknown): SavedSet {
   const s = object(value);
   if (s.starred !== undefined && typeof s.starred !== "boolean") return invalid();
-  const text = string(s.text, s.type === "PDF" ? Number.MAX_SAFE_INTEGER : 20000);
-  if (s.type !== "PDF") validText(text);
+  const text = string(s.text, s.type === "PDF" || s.subtitles !== undefined ? Number.MAX_SAFE_INTEGER : 20000);
+  if (s.type !== "PDF" && s.subtitles === undefined) validText(text);
   else if (!/[\u0621-\u064a]/.test(text)) return invalid();
   const segments = readSegments(s.segments, text);
   const id = string(s.id, 200),
@@ -144,7 +144,7 @@ export function readSavedSet(value: unknown): SavedSet {
       !Number.isInteger(count) ||
       count < 1 ||
       count > 15 ||
-      (s.type !== "PDF" && count * selected.length > 300))
+      (s.type !== "PDF" && s.subtitles === undefined && count * selected.length > 300))
   )
     return invalid();
   const categories = preferences.categories;
@@ -164,7 +164,7 @@ export function readSavedSet(value: unknown): SavedSet {
     language: string(preferences.language, 100),
     ...(count !== undefined ? { cardsPerPassage: count as number } : {}),
   };
-  if (!Array.isArray(s.vocabulary) || !s.vocabulary.length || (s.type !== "PDF" && s.vocabulary.length > 300))
+  if (!Array.isArray(s.vocabulary) || !s.vocabulary.length || (s.type !== "PDF" && s.subtitles === undefined && s.vocabulary.length > 300))
     return invalid();
   const vocabulary = s.vocabulary.map((value) => {
     const v = object(value),

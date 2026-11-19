@@ -133,8 +133,7 @@ export function CustomizeScreen({
             : pdf ? "Automatic chooses up to 15 cards per batch; some passages may receive no cards." : "Automatic chooses up to 15 cards in total."}
       </p>
       <p className="notice">
-        Choose a target for each selected passage. Short passages may yield fewer distinct
-        expressions. {pdf ? "Large selections are processed in batches; more passages can mean more AI requests, time, and cost. If generation fails, retrying repeats completed batches." : "Maximum 300 cards per set. Each selected passage is generated separately. More passages use more AI requests."}
+        The per-passage choice sets an overall target. Additional cards may come from other passages; unsuitable or short passages may yield fewer. A fill pass can add AI requests, time, and cost. {pdf ? "Large selections are processed in batches. If generation fails, retry in this tab to resume completed batches." : "Maximum 300 cards per set."}
       </p>
       {!["English", "Arabic"].includes(preferences.language) && (
         <p role="alert">

@@ -1,7 +1,7 @@
 require('./load-ts.cjs');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { subtitleRange, subtitleReferences } = require('../lib/subtitle-range.ts');
+const { moviePosition, subtitleRange, subtitleReferences } = require('../lib/subtitle-range.ts');
 
 test('rounds the end up to a whole cue, including across a gap', () => {
   const cues = [{ start_ms: 0, end_ms: 1000 }, { start_ms: 3000, end_ms: 5000 }];
@@ -20,4 +20,9 @@ test('maps paragraphs inside one cue to its original timing without changing tex
     { sourceId: '3', cueId: 'b', startMs: 30, endMs: 40 },
   ]);
   assert.throws(() => subtitleReferences(cues, [{ id: 'bad', text: 'not present' }]));
+});
+
+test('formats movie positions in minutes and seconds', () => {
+  assert.equal(moviePosition(59999), '0:59');
+  assert.equal(moviePosition(3600000), '60:00');
 });

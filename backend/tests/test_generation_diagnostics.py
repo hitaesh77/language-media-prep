@@ -177,6 +177,41 @@ def test_schema_diagnostic_reports_safe_reason(upstream, caplog, cards, reason):
     assert "private-test-key" not in caplog.text
 
 
+def test_numeric_empty_passage_is_not_a_schema_failure(upstream):
+    upstream["body"]["choices"][0]["message"]["content"] = json.dumps({"cards": []})
+    response = client.post("/api/generate", json=request_body(cards_per_passage=3))
+    assert response.status_code == 422
+    assert "No vocabulary candidates" in response.json()["detail"]
+    schema = upstream["calls"][0]["response_format"]["json_schema"]["schema"]
+    assert schema["properties"]["cards"]["minItems"] == 0
+
+
+def test_numeric_blank_meaning_with_unknown_candidate_is_rejected(upstream):
+    upstream["body"]["choices"][0]["message"]["content"] = json.dumps(
+        {"cards": [{"candidate_id": "unknown", "meaning": " "}]}
+    )
+    assert client.post("/api/generate", json=request_body(cards_per_passage=3)).status_code == 502
+
+
+def test_fill_excludes_existing_source_words_and_caps_output(upstream):
+    request = request_body()
+    segment = client.post("/api/segments", json={"text": request["text"]}).json()[0]
+    first_word = segment["text"].split()[0]
+    request.update(target=1, existing=[{"segment_id": segment["id"], "expression": first_word}])
+    upstream["body"]["choices"][0]["message"]["content"] = json.dumps({"cards": [{"candidate_id": "c0", "meaning": "fixture"}]})
+    response = client.post("/api/generate/fill", json=request)
+    assert response.status_code == 200
+    offered = json.loads(upstream["calls"][0]["messages"][1]["content"])["source_candidates"]
+    assert all(c["expression"] != first_word for c in offered)
+    assert response.json()["cards"][0]["expression"] != first_word
+
+
+def test_fill_rejects_existing_expression_outside_source(upstream):
+    request = request_body(target=1, existing=[{"segment_id": "unknown", "expression": "invented"}])
+    assert client.post("/api/generate/fill", json=request).status_code == 422
+    assert not upstream["calls"]
+
+
 def test_categories_offer_only_individual_source_words(upstream):
     assert (
         client.post(
@@ -187,3 +222,30 @@ def test_categories_offer_only_individual_source_words(upstream):
     data = json.loads(upstream["calls"][0]["messages"][1]["content"])
     assert all(len(c["expression"].split()) == 1 for c in data["source_candidates"])
     assert data["settings"]["categories"] == ["nouns", "verbs"]
+
+
+@pytest.mark.parametrize("environment", [None, "prod", "development"])
+def test_llm_content_is_not_logged_by_default(upstream, monkeypatch, caplog, environment):
+    if environment is None:
+        monkeypatch.delenv("ENVIRONMENT", raising=False)
+    else:
+        monkeypatch.setenv("ENVIRONMENT", environment)
+    with caplog.at_level(logging.WARNING):
+        response = client.post("/api/generate", json=request_body())
+    assert response.status_code == 200
+    assert "llm request=" not in caplog.text
+    assert "fixture meaning" not in caplog.text
+
+
+def test_dev_logs_request_and_response_even_on_provider_failure(upstream, monkeypatch, caplog):
+    monkeypatch.setenv("ENVIRONMENT", "dev")
+    upstream["status"] = 400
+    upstream["body"] = {"error": {"message": "fixture provider response"}}
+    with caplog.at_level(logging.WARNING):
+        response = client.post("/api/generate", json=request_body())
+    assert response.status_code == 502
+    assert "llm request=" in caplog.text
+    assert "source_data" in caplog.text
+    assert "llm response status=400" in caplog.text
+    assert "fixture provider response" in caplog.text
+    assert "private-test-key" not in caplog.text

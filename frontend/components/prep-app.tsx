@@ -11,7 +11,7 @@ import type { Screen } from "./prep-types";
 import { AppShell } from "./app-shell";
 import { HomeScreen } from "./screens/home-screen";
 import { SubtitleScreen } from "./screens/subtitle-screen";
-import { subtitleReferences } from "../lib/subtitle-range";
+import { moviePosition, subtitleReferences } from "../lib/subtitle-range";
 import { ContentScreen } from "./screens/content-screen";
 import { PassagesScreen } from "./screens/passages-screen";
 import { CustomizeScreen } from "./screens/customize-screen";
@@ -340,9 +340,7 @@ export default function PrepApp() {
             onBack={() => navigateTo("content")}
             onUse={async (cues, title) => {
               const source = cues.map((c) => c.text).join("\n\n");
-              const result = await api.processContent(source);
-              if (result.segments.length > 100)
-                throw Error("This selection contains more than 100 passages. Choose a shorter range.");
+              const result = { segments: source.split(/\r?\n\s*\r?\n/u).filter((part) => part.trim()).map((text, i) => ({ id: `subtitle:${i}`, text })) };
               const references = subtitleReferences(cues, result.segments);
               setName(title);
               setMode("Pasted text");
@@ -380,7 +378,7 @@ export default function PrepApp() {
           preferences={prefs}
           isRegenerating={!!active}
           passageCount={selected.length}
-          pdf={mode === "PDF"}
+          pdf={mode === "PDF" || !!subtitles}
           onChange={setPrefs}
           onBack={() => navigateTo(active ? "vocabulary" : "passages")}
           onGenerate={generateVocabulary}
@@ -405,7 +403,7 @@ export default function PrepApp() {
       {screen === "practice" && currentCard && (
         <PracticeScreen
           card={currentCard}
-          passageLabel={`${active?.subtitles?.find((c) => c.sourceId === currentCard.sourceId) ? `${(active.subtitles.find((c) => c.sourceId === currentCard.sourceId)!.startMs / 1000).toFixed(1)}s - ` : ""}Passage ${(active?.segments.findIndex((s) => s.id === currentCard.sourceId) ?? -1) + 1}${active?.pages?.find((p) => p.segmentIds.includes(currentCard.sourceId)) ? ` - Page ${active.pages.find((p) => p.segmentIds.includes(currentCard.sourceId))!.page}` : ""}`}
+          passageLabel={`${active?.subtitles?.find((c) => c.sourceId === currentCard.sourceId) ? `At ${moviePosition(active.subtitles.find((c) => c.sourceId === currentCard.sourceId)!.startMs)} ? ` : ""}Passage ${(active?.segments.findIndex((s) => s.id === currentCard.sourceId) ?? -1) + 1}${active?.pages?.find((p) => p.segmentIds.includes(currentCard.sourceId)) ? ` - Page ${active.pages.find((p) => p.segmentIds.includes(currentCard.sourceId))!.page}` : ""}`}
           batchLabel={`Batch ${batch + 1} of ${batches.length} - up to 10 cards from one passage`}
           index={index}
           total={queue.length}

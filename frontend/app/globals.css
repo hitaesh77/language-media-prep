@@ -496,17 +496,6 @@ main {
 .loading h1 {
   font-size: 25px;
 }
-.orb {
-  margin: 0 auto 30px;
-  width: 90px;
-  height: 90px;
-  display: grid;
-  place-items: center;
-  background: var(--lavender);
-  color: var(--purple);
-  border-radius: 35% 65% 45% 55%;
-  animation: breathe 2s ease-in-out infinite;
-}
 .indeterminate {
   height: 6px;
   background: #f0edf1;

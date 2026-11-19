@@ -15,7 +15,7 @@ def passages_provider(monkeypatch):
         "LLM_MODEL": "fixture",
     }.items():
         monkeypatch.setenv(key, value)
-    state = {"calls": [], "active": 0, "peak": 0, "fail": False}
+    state = {"calls": [], "active": 0, "peak": 0, "fail": False, "blank": False}
 
     async def post(self, url, **kwargs):
         data = json.loads(kwargs["json"]["messages"][1]["content"])
@@ -29,6 +29,8 @@ def passages_provider(monkeypatch):
             candidates = data["source_candidates"][
                 : data["settings"]["cards_per_passage"]
             ]
+            if state["blank"] and data["source_data"][0]["id"].endswith(":1"):
+                candidates = candidates[:1]
             return httpx.Response(
                 200,
                 request=httpx.Request("POST", url),
@@ -41,7 +43,7 @@ def passages_provider(monkeypatch):
                                         "cards": [
                                             {
                                                 "candidate_id": c["id"],
-                                                "meaning": "fixture meaning",
+                                                "meaning": " \u2003" if state["blank"] and data["source_data"][0]["id"].endswith(":1") else "fixture meaning",
                                             }
                                             for c in candidates
                                         ]
@@ -99,3 +101,24 @@ def test_passage_failure_returns_no_partial_set(passages_provider):
     response = client.post("/api/generate", json=body(4, 5))
     assert response.status_code == 502
     assert "cards" not in response.json()
+
+
+def test_blank_credit_does_not_discard_other_passages(passages_provider):
+    passages_provider["blank"] = True
+    request = body(3, 3)
+    response = client.post("/api/generate", json=request)
+    assert response.status_code == 200
+    result = response.json()
+    assert len(result["cards"]) == 6
+    assert all(card["segment_id"] != request["segment_ids"][1] for card in result["cards"])
+    assert "Passage 2: 0 of 3" in result["notice"]
+    assert len(passages_provider["calls"]) == 3
+
+
+def test_non_arabic_credit_is_skipped_without_provider_call(passages_provider):
+    text = TEXT.split("\n\n")[0] + "\n\nFilm credits"
+    segments = client.post("/api/segments", json={"text": text}).json()
+    response = client.post("/api/generate", json={"text": text, "segment_ids": [s["id"] for s in segments], "mode": "llm", "cards_per_passage": 3})
+    assert response.status_code == 200
+    assert "Passage 2: 0 of 3" in response.json()["notice"]
+    assert len(passages_provider["calls"]) == 1

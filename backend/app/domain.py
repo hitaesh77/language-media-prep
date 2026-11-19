@@ -60,6 +60,16 @@ class GenerateInput(SourceInput):
         return values
 
 
+class ExistingExpression(BaseModel):
+    segment_id: str = Field(min_length=1, max_length=100)
+    expression: str = Field(min_length=1, max_length=200)
+
+
+class FillInput(GenerateInput):
+    target: int = Field(strict=True, ge=1, le=15)
+    existing: list[ExistingExpression] = Field(max_length=300)
+
+
 class Card(BaseModel):
     expression: str = Field(min_length=1, max_length=200)
     meaning: str = Field(min_length=1, max_length=1500)

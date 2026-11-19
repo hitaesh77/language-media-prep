@@ -11,13 +11,14 @@ import {
   validText,
 } from "./contracts";
 import { Library, type BrowserStorage } from "./storage";
-import type { GenerateRequest, PrepClient, SavedSet, SourceContent } from "./types";
+import type { GenerateRequest, PrepClient, SavedSet, SourceContent, Segment } from "./types";
 
 type Options = {
   baseUrl?: string;
   fetch?: typeof fetch;
   storage?: BrowserStorage;
   timeoutMs?: number;
+  child?: boolean;
 };
 const levels: Record<string, string> = {
   Beginner: "beginner",
@@ -38,6 +39,8 @@ export function createHttpClient(options: Options = {}): PrepClient {
   let importedFile: File | undefined;
   let importedPages = new Map<number, { text: string; segments: { id: string; text: string }[] }>();
   let cancelled = 0;
+  // shortcut: drafts are lost on refresh or Home, add durable drafts when recovery across sessions is needed.
+  let generationDraft: { key: string; vocabulary: SavedSet["vocabulary"]; usages: (Record<string, number> | null)[] } | undefined;
   const base = (
     options.baseUrl ??
     process.env.NEXT_PUBLIC_API_URL ??
@@ -48,7 +51,7 @@ export function createHttpClient(options: Options = {}): PrepClient {
     pending.add(controller);
     const timeout = setTimeout(
       () => controller.abort(),
-      options.timeoutMs ?? (path === "/api/generate" ? 100000 : path === "/api/pdf/extract" ? 75000 : 25000),
+      options.timeoutMs ?? (path.startsWith("/api/generate") ? 100000 : path === "/api/pdf/extract" ? 75000 : 25000),
     );
     try {
       const response = await (options.fetch ?? fetch)(base + path, {
@@ -102,6 +105,56 @@ export function createHttpClient(options: Options = {}): PrepClient {
   }
   const parse = async (text: string) =>
     readSegments(await post("/api/segments", JSON.stringify({ text }), true), text);
+  async function fill(groups: Segment[][], vocabulary: SavedSet["vocabulary"], request: GenerateRequest, operation: number) {
+    const target = (request.preferences.cardsPerPassage ?? 0) * request.selected.length;
+    let failed = false;
+    const usage: (Record<string, number> | null)[] = [];
+    // shortcut: one fill request per group, revisit if coverage needs multiple passes.
+    for (const group of groups) {
+      if (vocabulary.length >= target) break;
+      if (operation !== cancelled) throw Error("Request cancelled.");
+      const text = group.map((segment) => segment.text).join("\n\n");
+      try {
+        const parsed = await parse(text);
+        if (operation !== cancelled) throw Error("Request cancelled.");
+        if (parsed.length !== group.length || parsed.some((s, i) => s.text !== group[i].text)) return invalid();
+        const existing = vocabulary.flatMap((card) => {
+          const index = group.findIndex((s) => s.id === card.sourceId);
+          return index < 0 ? [] : [{ segment_id: parsed[index].id, expression: card.expression }];
+        });
+        const data = object(await post("/api/generate/fill", JSON.stringify({
+          text, segment_ids: parsed.map((s) => s.id), mode: "llm", target: Math.min(15, target - vocabulary.length), existing,
+          proficiency: levels[request.preferences.level], variety: varieties[request.preferences.variety],
+          explanation_language: request.preferences.language,
+          ...(request.preferences.categories ? { categories: request.preferences.categories } : {}),
+        }), true));
+        const meta = metadata(data);
+        if (operation !== cancelled) throw Error("Request cancelled.");
+        if (!Array.isArray(data.cards) || !data.cards.length || data.cards.length > Math.min(15, target - vocabulary.length)) return invalid();
+        const additions: SavedSet["vocabulary"] = [];
+        const seen = new Set(existing.map((e) => JSON.stringify([e.segment_id, e.expression])));
+        for (const value of data.cards) {
+          const card = object(value), expression = string(card.expression, 200), sourceId = string(card.segment_id, 128), context = string(card.context);
+          const index = parsed.findIndex((s) => s.id === sourceId), key = JSON.stringify([sourceId, expression]);
+          if (index < 0 || context !== parsed[index].text || !context.includes(expression) || seen.has(key) || (request.preferences.categories && expression.trim().split(/\s+/u).length !== 1)) return invalid();
+          seen.add(key);
+          additions.push({ id: JSON.stringify([group[index].id, expression]), expression, meaning: string(card.meaning, 1500), sourceId: group[index].id, context, familiar: false });
+        }
+        vocabulary.push(...additions);
+        usage.push(meta.usage);
+      } catch (error) {
+        if (operation !== cancelled) throw Error("Request cancelled.");
+        usage.push(null);
+        if (!(error instanceof Error) || error.message !== "No vocabulary candidates found. Try a longer Arabic passage.") {
+          failed = true;
+          break;
+        }
+      }
+    }
+    const order = new Map(groups.flat().map((segment, index) => [segment.id, index]));
+    vocabulary.sort((a, b) => (order.get(a.sourceId) ?? 0) - (order.get(b.sourceId) ?? 0));
+    return { failed, usage, target };
+  }
   const find = (id: string) => {
     const set = library.read().find((s) => s.id === id);
     if (!set) throw Error("Set not found. Return home and try another.");
@@ -112,6 +165,7 @@ export function createHttpClient(options: Options = {}): PrepClient {
       cancelled++;
       importedFile = undefined;
       importedPages.clear();
+      generationDraft = undefined;
       for (const controller of pending) controller.abort("navigation");
       for (const child of children) child.cancelPending();
     },
@@ -353,7 +407,9 @@ export function createHttpClient(options: Options = {}): PrepClient {
     },
     async generateVocabulary(request: GenerateRequest) {
       const count = request.preferences.cardsPerPassage;
-      if (request.type === "PDF" && ([...request.text].length > 20000 || request.selected.length > 10 || (count !== undefined && count * request.selected.length > 300))) {
+      const initialOperation = cancelled;
+      const generationStarted = Date.now();
+      if ((request.type === "PDF" || request.subtitles) && ([...request.text].length > 20000 || request.selected.length > 10 || (count !== undefined && count * request.selected.length > 300))) {
         const operation = cancelled;
         const started = Date.now();
         const previous = request.id ? find(request.id) : undefined;
@@ -363,6 +419,7 @@ export function createHttpClient(options: Options = {}): PrepClient {
         if (!selectedIds.size || selectedIds.size !== request.selected.length || request.selected.some((id) => !old.some((segment) => segment.id === id)))
           throw Error("Select valid source passages again.");
         const pages = readPages(request.pages, old);
+        const subtitles = readSubtitles(request.subtitles, old);
         const selectedSegments = old.filter((segment) => selectedIds.has(segment.id));
         const batches: typeof selectedSegments[] = [];
         let batch: typeof selectedSegments = [], length = 0;
@@ -376,9 +433,10 @@ export function createHttpClient(options: Options = {}): PrepClient {
           batch.push(segment);
         }
         if (batch.length) batches.push(batch);
-        const vocabulary: SavedSet["vocabulary"] = [];
-        const usages: (Record<string, number> | null)[] = [];
-        for (const group of batches) {
+        const key = JSON.stringify(request);
+        if (generationDraft?.key !== key) generationDraft = { key, vocabulary: [], usages: [] };
+        const { vocabulary, usages } = generationDraft;
+        for (const group of batches.slice(usages.length)) {
           if (operation !== cancelled) throw Error("Request cancelled.");
           const text = group.map((segment) => segment.text).join("\n\n");
           const parsed = await parse(text);
@@ -386,7 +444,7 @@ export function createHttpClient(options: Options = {}): PrepClient {
             throw Error("Selected passages could not be prepared. Please choose them again.");
           if (operation !== cancelled) throw Error("Request cancelled.");
           const memory = new Map<string, string>();
-          const child = createHttpClient({ ...options, storage: {
+          const child = createHttpClient({ ...options, child: true, storage: {
             getItem: (key) => memory.get(key) ?? null,
             setItem: (key, value) => { memory.set(key, value); },
             removeItem: (key) => { memory.delete(key); },
@@ -394,14 +452,24 @@ export function createHttpClient(options: Options = {}): PrepClient {
           children.add(child);
           let result: SavedSet;
           try {
-            result = await child.generateVocabulary({
-              name: request.name, type: "PDF", text, segments: parsed,
+            const childRequest: GenerateRequest = {
+              name: request.name, type: request.type, text, segments: parsed,
               selected: parsed.map((segment) => segment.id), preferences: request.preferences,
-            });
+            };
+            try {
+              result = await child.generateVocabulary(childRequest);
+            } catch (error) {
+              if (operation !== cancelled || !(error instanceof Error) || error.message !== "AI generation did not match the required vocabulary format. Try again.") throw error;
+              result = await child.generateVocabulary(childRequest);
+            }
           } catch (error) {
             if (operation !== cancelled) throw Error("Request cancelled.");
             const message = error instanceof Error ? error.message : "Generation failed.";
-            throw Error(`${message} A retry repeats completed batches and may incur additional AI charges.`);
+            if (count !== undefined && message === "No vocabulary candidates found. Try a longer Arabic passage.") {
+              usages.push(null);
+              continue;
+            }
+            throw Error(`${message} ${usages.length} of ${batches.length} batches are retained in this tab. Try again to resume; retrying may incur additional AI charges.`);
           } finally { children.delete(child); }
           if (operation !== cancelled) throw Error("Request cancelled.");
           for (const card of result.vocabulary) {
@@ -412,24 +480,31 @@ export function createHttpClient(options: Options = {}): PrepClient {
           }
           usages.push(result.generation?.usage ?? null);
         }
-        const usage = usages.every((value) => value !== null) ? usages.reduce<Record<string, number>>((sum, value) => {
+        const finalVocabulary = [...vocabulary];
+        const filled = count !== undefined ? await fill(batches, finalVocabulary, request, operation) : undefined;
+        const allUsages = [...usages, ...(filled?.usage ?? [])];
+        const usage = allUsages.every((value) => value !== null) ? allUsages.reduce<Record<string, number>>((sum, value) => {
           for (const [key, amount] of Object.entries(value ?? {})) sum[key] = (sum[key] ?? 0) + amount;
           return sum;
         }, {}) : null;
+        const covered = new Set(finalVocabulary.map((card) => card.sourceId));
+        if (!finalVocabulary.length) throw Error("No vocabulary candidates found. Try a longer Arabic passage.");
         const set: SavedSet = {
-          id: previous?.id ?? crypto.randomUUID(), name: request.name.trim(), type: "PDF",
+          id: previous?.id ?? crypto.randomUUID(), name: request.name.trim(), type: request.type,
           text: request.text, segments: old, selected: request.selected, preferences: request.preferences,
-          vocabulary, createdAt: previous?.createdAt ?? new Date().toISOString(),
+          vocabulary: finalVocabulary, createdAt: previous?.createdAt ?? new Date().toISOString(),
           ...(previous?.starred !== undefined ? { starred: previous.starred } : {}),
           ...(pages ? { pages } : {}),
+          ...(subtitles ? { subtitles } : {}),
           generation: { mode: "llm", elapsedMs: Date.now() - started, usage, cost: null,
-            notice: `Generated across ${batches.length} batches. AI meanings need proficient review; occurrence checks do not validate meaning.` },
+            notice: `Generated across ${batches.length} batches. ${filled ? `${finalVocabulary.length} of ${filled.target} requested cards. ${filled.failed ? "Some additional generation failed; existing cards were kept. " : ""}` : ""}${selectedSegments.filter((segment) => !covered.has(segment.id)).length} selected passages have no cards. AI meanings need proficient review; occurrence checks do not validate meaning.` },
         };
         readSavedSet(set);
         const latest = library.read();
         if (previous && JSON.stringify(latest.find((item) => item.id === previous.id)) !== JSON.stringify(previous))
           throw Error("This set changed in another tab. Reopen it before regenerating.");
         library.write([...latest.filter((item) => item.id !== set.id), set]);
+        generationDraft = undefined;
         return set;
       }
       validText(request.text);
@@ -546,6 +621,17 @@ export function createHttpClient(options: Options = {}): PrepClient {
         selected.some((id) => vocabulary.filter((v) => v.sourceId === id).length > count)
       )
         return invalid();
+      if (count !== undefined && !options.child) {
+        const selectedSegments = segments.filter((s) => selected.includes(s.id));
+        const groups = Array.from({ length: Math.ceil(selectedSegments.length / 10) }, (_, i) => selectedSegments.slice(i * 10, i * 10 + 10));
+        const filled = await fill(groups, vocabulary, request, initialOperation);
+        generation.elapsedMs = Date.now() - generationStarted;
+        generation.notice = `${vocabulary.length} of ${filled.target} requested cards. ${filled.failed ? "Some additional generation failed; existing cards were kept. " : ""}First-pass details: ${generation.notice}`;
+        for (const value of filled.usage) {
+          if (!generation.usage || !value) generation.usage = null;
+          else for (const [key, amount] of Object.entries(value)) generation.usage[key] = (generation.usage[key] ?? 0) + amount;
+        }
+      }
       const set: SavedSet = {
         id: previous?.id ?? crypto.randomUUID(),
         name,

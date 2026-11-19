@@ -5,6 +5,7 @@ import type {
   Segment,
   SubtitleReference,
 } from "../../lib/api/types";
+import { moviePosition } from "../../lib/subtitle-range";
 import { Title, SourceNameInput } from "../flow-controls";
 
 type PassagesScreenProps = {
@@ -90,9 +91,7 @@ export function PassagesScreen({
               <span>
                 <small>
                   Passage {i + 1}
-                  {subtitles?.[i]
-                    ? ` ? ${(subtitles[i].startMs / 1000).toFixed(1)}?${(subtitles[i].endMs / 1000).toFixed(1)}s`
-                    : ""}
+                  {subtitles?.[i] ? ` ? At ${moviePosition(subtitles[i].startMs)} in the movie` : ""}
                   {pages?.some((p) => p.segmentIds.includes(s.id))
                     ? ` · Page ${pages.find((p) => p.segmentIds.includes(s.id))!.page}`
                     : ""}

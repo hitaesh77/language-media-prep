@@ -1,6 +1,6 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import { Title } from "../flow-controls";
-import { subtitleRange } from "../../lib/subtitle-range";
+import { moviePosition, subtitleRange } from "../../lib/subtitle-range";
 
 type Cue = { id: string; start_ms: number; end_ms: number; text: string };
 type Result = { id: number; title: string; year?: number; release: string };
@@ -210,11 +210,12 @@ export function SubtitleScreen({
             </label>
           </div>
           <p>
-            {selected.length} subtitle passages selected ({characters.toLocaleString()} characters). One preparation currently supports at most 100 passages and 20,000 characters; choose a shorter range if needed.
+            {selected.length} subtitle passages selected ({characters.toLocaleString()} characters).
           </p>
           {selected.length > 0 && (
             <p>The end time rounds up to a complete subtitle, ending at {(Math.max(...selected.map((c) => c.end_ms)) / 1000).toFixed(1)} seconds.</p>
           )}
+          {selected.length > 100 && <p>Showing the first 100 selected passages below.</p>}
           <div className="subtitle-cues">
             {selected.slice(0, 100).map((c) => (
               <p key={c.id}>
@@ -229,7 +230,7 @@ export function SubtitleScreen({
           </div>
           <button
             className="primary"
-            disabled={busy || invalidRange || !selected.length || selected.length > 100 || characters > 20000}
+            disabled={busy || invalidRange || !selected.length}
             onClick={() => run(() => onUse(selected, name || query || "Movie subtitles"))}
           >
             Use selected subtitles

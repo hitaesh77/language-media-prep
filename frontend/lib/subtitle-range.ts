@@ -1,3 +1,8 @@
+export function moviePosition(ms: number) {
+  const seconds = Math.floor(ms / 1000);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
 export function subtitleRange<T extends { start_ms: number; end_ms: number }>(cues: T[], start: number, end: number): T[] {
   const roundedEnd = cues.reduce(
     (nearest, cue) => cue.end_ms >= end * 1000 ? Math.min(nearest, cue.end_ms) : nearest,

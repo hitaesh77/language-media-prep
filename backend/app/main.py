@@ -25,7 +25,7 @@ from .domain import (
     grounded,
     parse_source,
 )
-from .generation import generate
+from .generation import generate, fill_generation
 from .pdf_service import MAX_PDF_BYTES, extract_pdf
 
 logger = logging.getLogger(__name__)
@@ -102,6 +102,7 @@ def segments(body: SourceInput):
 
 
 app.post("/api/generate", response_model=GenerationResult)(generate)
+app.post("/api/generate/fill", response_model=GenerationResult)(fill_generation)
 
 
 @app.post("/api/pdf/extract", response_model=PDFResult)

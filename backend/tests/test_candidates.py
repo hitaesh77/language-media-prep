@@ -37,3 +37,9 @@ def test_single_word_candidates_keep_words_separate():
     )
     candidates = source_candidates(segments, max_words=1)
     assert [c.expression for c in candidates] == segments[0].text.split()
+
+
+def test_excluded_expression_remains_available_in_another_passage():
+    segments = parse_source("كتاب جديد\n\nكتاب قديم")
+    candidates = source_candidates(segments, max_words=1, excluded={(segments[0].id, "كتاب")})
+    assert any(c.segment_id == segments[1].id and c.expression == "كتاب" for c in candidates)
